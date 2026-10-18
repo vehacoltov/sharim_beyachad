@@ -7,7 +7,9 @@ const voluteerSchema = mongoose.Schema({
         unique: true
     },
     password:{
-        type:String
+        type:String,
+        select:false,
+        required:true
     },
     email: {
         type: String,

@@ -5,5 +5,7 @@ const Volunteer = require("../models/Volun")
 module.exports = createModelController({
     model: Volunteer,
     editableFields: ["fullName", "password", "email", "id", "phone", "age", "seminar", "detaling"],
-    privateFields: ["password"]
+    privateFields: ["password"],
+    passwordField: "password",
+    loginFields: ["email", "fullName"]
 })

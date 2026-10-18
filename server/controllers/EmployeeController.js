@@ -5,5 +5,7 @@ const Employee = require("../models/Employee")
 module.exports = createModelController({
     model: Employee,
     editableFields: ["fullName", "id", "phone", "userName", "password", "permission", "workingTime", "currentWorkingTime"],
-    privateFields: ["password"]
+    privateFields: ["password","permission"],
+    passwordField: "password",
+    loginFields: ["userName"]
 })

@@ -5,5 +5,7 @@ const Parent = require("../models/Parent")
 module.exports = createModelController({
     model: Parent,
     editableFields: ["UserName", "email", "password", "id", "children"],
-    privateFields: ["password"]
+    privateFields: ["password"],
+    passwordField: "password",
+    loginFields: ["UserName", "email"]
 })
