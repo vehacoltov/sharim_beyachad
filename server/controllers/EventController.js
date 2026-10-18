@@ -4,7 +4,16 @@ const mongoose = require("mongoose")
 const Event = require("../models/Event")
 
 // מגדיר אילו שדות מותר לשנות; השדות id, _id וחותמות הזמן אינם ניתנים לעדכון כאן.
-const editableEventFields = ["name", "Children", "Volunteers", "date", "detailing"]
+const editableEventFields = [
+    "name",
+    "Children",
+    "Volunteers",
+    "date",
+    "detailing",
+    "sumOfChilds",
+    "SavedPlaces",
+    "isActive"
+]
 
 // מגדיר פעולה אסינכרונית שמטפלת בבקשה לקבלת כל האירועים.
 const getAllEvents = async (req, res) => {
@@ -58,12 +67,22 @@ const getById = async (req, res) => {
 // מגדיר פעולה אסינכרונית ליצירת אירוע חדש.
 const createEvent = async (req, res) => {
     // לוקח רק שדות שמוגדרים במודל; אם גוף הבקשה חסר, משתמש באובייקט ריק.
-    const { name, id, Children, Volunteers, date, detailing } = req.body ?? {}
+    const { name, id, Children, Volunteers, date, detailing, sumOfChilds, SavedPlaces, isActive } = req.body ?? {}
 
     // מתחיל ניסיון ליצור את האירוע במסד הנתונים.
     try {
         // יוצר מסמך חדש רק מהשדות המפורשים, ו־Mongoose בודק את כללי המודל.
-        const event = await Event.create({ name, id, Children, Volunteers, date, detailing })
+        const event = await Event.create({
+            name,
+            id,
+            Children,
+            Volunteers,
+            date,
+            detailing,
+            sumOfChilds,
+            SavedPlaces,
+            isActive
+        })
         // מחזיר 201, המציין שהמשאב נוצר בהצלחה, יחד עם האירוע שנוצר.
         return res.status(201).json(event)
     // תופס שגיאות ולידציה ושגיאות אחרות מתהליך היצירה.
@@ -182,4 +201,3 @@ const deleteEvent = async (req, res) => {
 
 // מייצא את פעולות ה־controller כדי שה־route יוכל לשייך אותן לכתובות HTTP.
 module.exports = { getAllEvents, getById, createEvent, update, deleteEvent }
-

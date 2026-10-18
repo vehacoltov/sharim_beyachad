@@ -1,0 +1,23 @@
+:root {
+  font-family: Arial, sans-serif;
+  color: #17324d;
+  background: #f1f6fa;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}

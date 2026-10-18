@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server"
+    "dev": "nodemon server",
+    "migrate:parent-username": "node scripts/migrateParentUsername.js",
+    "migrate:permission-ids": "node scripts/migratePermissionIds.js"
   },
   "keywords": [],
   "author": "",

@@ -1,10 +1,30 @@
 const mongoose = require("mongoose")
 const { isValidPassword, hashPassword, verifyPassword } = require("../utils/password")
 const { createAccessToken } = require("../config/jwt")
+const { getLoginLock, recordLoginFailure, clearLoginFailures } = require("../utils/loginRateLimiter")
 
 // בונה פעולות CRUD למודל, תוך הגבלת שדות והסתרת מידע פרטי מתגובות.
-const createModelController = ({ model, editableFields, privateFields = [], passwordField, loginFields = [] }) => {
+const createModelController = ({
+    model,
+    editableFields,
+    privateFields = [],
+    passwordField,
+    loginFields = [],
+    loginIdentifierField = "userName",
+    loginIdentifierValidator = value => typeof value === "string" && Boolean(value.trim()),
+    loginIdentifierLookup = value => value.trim(),
+    prepareFields = async fields => fields,
+    prepareCreateFields = prepareFields,
+    // מאפשר ל-controller של משתמש לדרוש אישור נוסף לפני שמירת הרשמה.
+    prepareRegistration = async fields => ({ fields }),
+    // שדות מערכת שניתן להוסיף רק אחרי שהשרת אימת אותם במהלך הרשמה.
+    registrationOnlyFields = [],
+    // מאפשר לחתום JWT בתפקיד שנשמר במסמך במקום בשם המודל.
+    tokenRoleField,
+    validateFields = () => null
+}) => {
     const allowedFields = new Set(editableFields)
+    const allowedRegistrationFields = new Set([...editableFields, ...registrationOnlyFields])
 
     // ממיר מסמך Mongoose לאובייקט רגיל ומסיר ממנו שדות פרטיים לפני שליחתו ללקוח.
     const toPublicDocument = (document) => {
@@ -28,26 +48,51 @@ const createModelController = ({ model, editableFields, privateFields = [], pass
         !passwordField || !(passwordField in fields) || isValidPassword(fields[passwordField])
 
     const login = async (req, res) => {
-        const { userName, password } = req.body || {}
+        const body = req.body || {}
+        const identifier = body[loginIdentifierField]
+        const { password } = body
         if (
-            typeof userName !== "string" ||
-            !userName.trim() ||
+            !loginIdentifierValidator(identifier) ||
             !isValidPassword(password) ||
             loginFields.length === 0
         ) {
-            return res.status(400).json({ message: "A valid userName and password are required" })
+            return res.status(400).json({ message: `A valid ${loginIdentifierField} and password are required` })
+        }
+
+        // מגבלת ניסיונות נפרדת לכל מודל, כתובת IP וערך זיהוי.
+        const ipAddress = req.ip || req.socket?.remoteAddress || "unknown"
+        const { key, retryAfterSeconds } = getLoginLock(model.modelName, ipAddress, identifier)
+        if (retryAfterSeconds > 0) {
+            res.set("Retry-After", String(retryAfterSeconds))
+            return res.status(429).json({
+                message: "Too many failed login attempts. Try again later.",
+                retryAfterSeconds
+            })
         }
 
         try {
-            // אותו userName בבקשה יכול להתאים לאחד משדות ההזדהות שהוגדרו למודל (למשל שם משתמש או אימייל).
-            const criteria = loginFields.map(field => ({ [field]: userName.trim() }))
+            const lookupValue = loginIdentifierLookup(identifier)
+            const criteria = loginFields.map(field => ({ [field]: lookupValue }))
             // סיסמה מוגדרת select:false במודל, לכן שולפים אותה במפורש רק לצורך אימות הכניסה.
             const document = await model.findOne({ $or: criteria }).select(`+${passwordField}`)
             if (!document || !document[passwordField] || !(await verifyPassword(password, document[passwordField]))) {
+                recordLoginFailure(key)
+                const lock = getLoginLock(model.modelName, ipAddress, identifier)
+                if (lock.retryAfterSeconds > 0) {
+                    res.set("Retry-After", String(lock.retryAfterSeconds))
+                    return res.status(429).json({
+                        message: "Too many failed login attempts. Try again later.",
+                        retryAfterSeconds: lock.retryAfterSeconds
+                    })
+                }
                 return res.status(401).json({ message: "Invalid credentials" })
             }
+            clearLoginFailures(key)
             // מנפיקים אסימון רק אחרי אימות הסיסמה; ה-hash עצמו מוסר מתשובת המשתמש.
-            const accessToken = createAccessToken(document, model.modelName)
+            const accessToken = createAccessToken(
+                document,
+                tokenRoleField ? document[tokenRoleField] : model.modelName
+            )
             return res.json({
                 message: "Login successful",
                 accessToken,
@@ -88,25 +133,30 @@ const createModelController = ({ model, editableFields, privateFields = [], pass
     }
 
     // יוצר מסמך חדש רק מהשדות המותרים ומחזיר שגיאות ולידציה באופן מתאים.
-    const create = async (req, res) => {
+    const create = async (req, res, trustedFields = []) => {
         const fields = req.body
         if (!fields || typeof fields !== "object" || Array.isArray(fields)) {
             return res.status(400).json({ message: "A JSON object is required" })
         }
 
-        const unsupportedFields = getUnsupportedFields(fields)
+        const allowedFieldsForRequest = new Set([...allowedFields, ...trustedFields])
+        const unsupportedFields = Object.keys(fields).filter(field => !allowedFieldsForRequest.has(field))
         if (unsupportedFields.length > 0) {
             return res.status(400).json({ message: "Unsupported fields", fields: unsupportedFields })
         }
         if (Object.keys(fields).length === 0) {
             return res.status(400).json({ message: "At least one field is required" })
         }
+        const validationMessage = validateFields(fields)
+        if (validationMessage) {
+            return res.status(400).json({ message: validationMessage })
+        }
         if (!isValidPasswordInput(fields)) {
             return res.status(400).json({ message: "Password must be a non-empty string of at most 72 UTF-8 bytes" })
         }
 
         try {
-            const values = { ...fields }
+            const values = await prepareCreateFields({ ...fields })
             if (passwordField && passwordField in values) {
                 // משנים עותק של נתוני הבקשה כדי לשמור במסד רק hash ולא את הסיסמה המקורית.
                 values[passwordField] = await hashPassword(values[passwordField])
@@ -127,8 +177,26 @@ const createModelController = ({ model, editableFields, privateFields = [], pass
         if (!passwordField || !isValidPassword(fields[passwordField])) {
             return res.status(400).json({ message: "A valid password is required" })
         }
-        // משתמשים באותה יצירה מאובטחת ומוגבלת שדות, אך מחייבים סיסמה במסלול הרישום.
-        return create(req, res)
+        try {
+            // מבצע בדיקת הרשאה ייעודית לפני שממשיכים ליצירת המסמך.
+            const registration = await prepareRegistration(fields, req)
+            if (registration.error) {
+                return res.status(registration.error.status).json({ message: registration.error.message })
+            }
+
+            // שדות מערכת כגון permission מתקבלים רק לאחר הכנה מהימנה בצד השרת.
+            const unsupportedFields = Object.keys(registration.fields)
+                .filter(field => !allowedRegistrationFields.has(field))
+            if (unsupportedFields.length > 0) {
+                return res.status(400).json({ message: "Unsupported fields", fields: unsupportedFields })
+            }
+
+            // ממשיכים דרך אותה יצירה מוגבלת שדות, לאחר הכנת ערכי הרישום המהימנים.
+            return create({ ...req, body: registration.fields }, res, registrationOnlyFields)
+        } catch (error) {
+            console.error(`Failed to prepare ${model.modelName} registration:`, error)
+            return res.status(500).json({ message: `Failed to register ${model.modelName}` })
+        }
     }
 
     // מעדכן רק שדות שנשלחו ומאושרים, כאשר id שבכתובת מזהה את המסמך.
@@ -149,12 +217,16 @@ const createModelController = ({ model, editableFields, privateFields = [], pass
         if (Object.keys(fields).length === 0) {
             return res.status(400).json({ message: "At least one field is required" })
         }
+        const validationMessage = validateFields(fields)
+        if (validationMessage) {
+            return res.status(400).json({ message: validationMessage })
+        }
         if (!isValidPasswordInput(fields)) {
             return res.status(400).json({ message: "Password must be a non-empty string of at most 72 UTF-8 bytes" })
         }
 
         try {
-            const updates = { ...fields }
+            const updates = await prepareFields({ ...fields })
             if (passwordField && passwordField in updates) {
                 // גם שינוי סיסמה עובר hash לפני עדכון; שדות אחרים נשארים ללא שינוי.
                 updates[passwordField] = await hashPassword(updates[passwordField])

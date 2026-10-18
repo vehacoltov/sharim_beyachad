@@ -1,16 +1,88 @@
-# React + Vite
+# תיעוד לקוח
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+ממשק React ו־Vite בעברית עבור פרויקט "שרים ביחד".
 
-Currently, two official plugins are available:
+## הרצה
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```powershell
+npm ci
+npm run dev
+```
 
-## React Compiler
+לבדיקת קוד ובניית גרסת הפצה:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```powershell
+npm run lint
+npm run build
+```
 
-## Expanding the Oxlint configuration
+ברירת המחדל היא חיבור לשרת ב־`http://localhost:7001`. להגדרת כתובת אחרת,
+מגדירים `VITE_API_URL` לפני הפעלת Vite, לדוגמה:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```powershell
+$env:VITE_API_URL = "http://localhost:7001"
+npm run dev
+```
+
+## מסכים ונתיבים
+
+| כתובת | מסך |
+|---|---|
+| `/` | התחברות ובחירת סוג משתמש |
+| `/register/parent` | הרשמת הורה |
+| `/register/volunteer` | הרשמת מתנדב/ת |
+| `/register/employee` | הרשמת עובד/ת |
+| `/personal` | אזור אישי לאחר התחברות |
+
+כתובות אחרות מפנות למסך ההתחברות.
+
+## התחברות
+
+במסך הכניסה בוחרים סוג חשבון ומזינים מזהה וסיסמה:
+
+- הורה — מספר הזהות נשמר בשדה `id` ונשלח ל־`POST /parent/login`.
+- מתנדב/ת — דואר אלקטרוני או שם מלא נשלחים בשדה `userName` אל
+  `POST /volunteer/login`.
+- עובד/ת — שם משתמש נשלח אל `POST /employee/login`.
+
+בתשובה מוצלחת נשמרים `accessToken`, פרטי המשתמש וסוג החשבון ב־`localStorage`,
+ואז מתבצע ניווט אל `/personal`. יציאה מסירה את הנתונים המקומיים.
+
+השרת מגביל ניסיונות התחברות: חמש סיסמאות שגויות בתוך חלון של 15 דקות
+גורמות לחסימה של חמש דקות עבור כתובת IP ומזהה החשבון. הממשק מציג את זמן
+ההמתנה שהשרת מחזיר.
+
+## הרשמה
+
+הקישור "עדיין לא רשום/ה במערכת?" פותח חלונית בחירת סוג חשבון.
+
+- הורה — טופס הפרטים נשלח ל־`POST /parent/register`.
+- מתנדב/ת — טופס הפרטים נשלח ל־`POST /volunteer/register`.
+- עובד/ת — תחילה נשלחת סיסמת הרשאת גישה אל
+  `POST /permission/verify-employee-access`. אם היא מאושרת, טופס העובד
+  נשלח אל `POST /employee/register`. השרת בודק את הסיסמה מחדש לפני היצירה,
+  קובע את שדה `permission` לפי תפקיד ההרשאה, ואינו שומר את סיסמת ההרשאה.
+
+הטפסים דורשים שדות הנדרשים בסכמות, ומציגים גם שדות אופציונליים:
+
+- הורה: `id`, דוא"ל, סיסמה ומזהי ילדים אופציונליים, המופרדים בפסיקים.
+- מתנדב/ת: שם מלא, דוא"ל, מספר זהות, טלפון, גיל, סמינר, פרטים נוספים וסיסמה.
+- עובד/ת: שם מלא, מספר זהות, טלפון, שם משתמש, שעות עבודה, שעות עבודה
+  נוכחיות, סיסמת חשבון וסיסמת הרשאת גישה.
+
+לאחר רישום מוצלח חוזרים למסך ההתחברות. שגיאות ולידציה וייחודיות שמוחזרות
+מהשרת מוצגות בטופס.
+
+## מבנה הקוד
+
+| קובץ | תפקיד |
+|---|---|
+| `src/App.jsx` | הגדרת ניווט ונתיבי המסכים |
+| `src/Login.jsx` | בחירת סוג חשבון, התחברות וחלונית הרשמה |
+| `src/RegistrationForm.jsx` | טופס הרשמה משותף, המרת קלט ושליחה לשרת |
+| `src/RegParent.jsx` | הגדרת שדות הרשמת הורה |
+| `src/RegVolun.jsx` | הגדרת שדות הרשמת מתנדב/ת |
+| `src/RegEmployee.jsx` | הגדרת שדות הרשמת עובד/ת |
+| `src/PersonalArea.jsx` | מסך יעד להתחברות ויציאה |
+| `src/api.js` | הגדרת Axios וכתובת השרת |
+| `src/App.css`, `src/index.css` | עיצוב המסכים והטפסים |

@@ -23,6 +23,7 @@ app.use("/child", require("./routes/childRoute"))
 app.use("/child-event", require("./routes/childEventRoute"))
 app.use("/employee", require("./routes/employeeRoute"))
 app.use("/parent", require("./routes/parentRoute"))
+app.use("/permission", require("./routes/permissionRoute"))
 app.use("/volunteer", require("./routes/volunRoute"))
 app.use("/volunteer-event", require("./routes/volunEventRoute"))
 

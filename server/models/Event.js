@@ -14,6 +14,19 @@ const eventSchema = mongoose.Schema({
         ref: 'ChildInEvent',
         required:true
     },
+    sumOfChilds: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
+    SavedPlaces: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
+    isActive: {
+        type: Boolean
+    },
     Volunteers: {
         type: [mongoose.Schema.Types.ObjectId],
         ref: 'VolunteerInEvent',
@@ -29,4 +42,5 @@ const eventSchema = mongoose.Schema({
 }, {
     timestamps: true
 })
+
 module.exports = mongoose.model('Event', eventSchema)
