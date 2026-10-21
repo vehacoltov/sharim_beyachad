@@ -13,6 +13,13 @@ const fields = [
     type: "password",
     autoComplete: "new-password",
     required: true,
+    requiredMessage: "יש להזין סיסמה.",
+    hint: "הסיסמה צריכה לכלול לפחות 6 תווים: אותיות וספרות",
+    validate: (value) =>
+      value.length >= 6 &&
+      /[A-Za-zא-ת]/u.test(value) &&
+      /\d/u.test(value),
+    validationMessage: "הסיסמה צריכה לכלול לפחות 6 תווים, ובה אותיות וספרות.",
   },
   // מזהי הילדים אינם חובה; הטופס שולח אותם כמערך של ObjectId.
   {

@@ -101,6 +101,7 @@ const createModelController = ({
                 user: toPublicDocument(document)
             })
         } catch (error) {
+            
             console.error(`Failed to log in ${model.modelName}:`, error)
             return res.status(500).json({ message: `Failed to log in ${model.modelName}` })
         }
@@ -164,7 +165,15 @@ const createModelController = ({
             const document = await model.create(values)
             return res.status(201).json(toPublicDocument(document))
         } catch (error) {
-            const status = error.name === "ValidationError" || error.name === "CastError" ? 400 : error.code === 11000 ? 409 : 500
+            console.error("Create error:", error);
+            if (error.code === 11000) {
+                const duplicateFields = Object.keys(error.keyPattern || error.keyValue || {})
+                const message = duplicateFields.length > 0
+                    ? `A record with this ${duplicateFields.join(", ")} already exists`
+                    : `A duplicate value already exists for ${model.modelName}`
+                return res.status(409).json({ message })
+            }
+            const status = error.name === "ValidationError" || error.name === "CastError" ? 400 : 500
             return res.status(status).json({ message: `Failed to create ${model.modelName}` })
         }
     }

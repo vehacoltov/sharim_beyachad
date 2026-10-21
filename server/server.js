@@ -5,7 +5,7 @@ const express = require("express")
 const cors = require("cors")
 const corsOptions = require("./config/corsOptions")
 const { getJwtSecret } = require("./config/jwt")
-const PORT = process.env.PORT || 7001
+const PORT = Number(process.env.PORT) || 7001
 const app = express()
 
 // בדיקת סוד JWT לפני התחברות למסד או פתיחת השרת, כדי לא לפעול עם תצורת חתימה חסרה.

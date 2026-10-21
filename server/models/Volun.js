@@ -22,7 +22,7 @@ const voluteerSchema = mongoose.Schema({
     },
     
     phone: {
-        type: Number,
+        type: String,
         required: true,
     },
     age: {

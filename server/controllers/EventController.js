@@ -9,6 +9,7 @@ const editableEventFields = [
     "Children",
     "Volunteers",
     "date",
+    "hour",
     "detailing",
     "sumOfChilds",
     "SavedPlaces",
@@ -67,7 +68,7 @@ const getById = async (req, res) => {
 // מגדיר פעולה אסינכרונית ליצירת אירוע חדש.
 const createEvent = async (req, res) => {
     // לוקח רק שדות שמוגדרים במודל; אם גוף הבקשה חסר, משתמש באובייקט ריק.
-    const { name, id, Children, Volunteers, date, detailing, sumOfChilds, SavedPlaces, isActive } = req.body ?? {}
+    const { name, id, Children, Volunteers, date, hour, detailing, sumOfChilds, SavedPlaces, isActive } = req.body ?? {}
 
     // מתחיל ניסיון ליצור את האירוע במסד הנתונים.
     try {
@@ -78,6 +79,7 @@ const createEvent = async (req, res) => {
             Children,
             Volunteers,
             date,
+            hour,
             detailing,
             sumOfChilds,
             SavedPlaces,

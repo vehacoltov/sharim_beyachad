@@ -7,15 +7,39 @@ function RegistrationForm({ title, endpoint, fields, verifyEmployeeAccess = fals
   const navigate = useNavigate()
   const [errorMessage, setErrorMessage] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [touchedFields, setTouchedFields] = useState({})
+
+  const getFieldError = (field, value) => {
+    if (field.required && !value.trim()) {
+      return field.requiredMessage || ""
+    }
+    if (!value.trim() || !field.validate || field.validate(value)) {
+      return ""
+    }
+    return field.validationMessage
+  }
 
   // בודק את הטופס, ממיר שדות מיוחדים ושולח את פרטי הרישום לשרת.
   const handleSubmit = async (event) => {
     event.preventDefault()
     setErrorMessage("")
+
+    const formData = new FormData(event.currentTarget)
+    const validationErrors = Object.fromEntries(
+      fields
+        .map((field) => [field.name, getFieldError(field, String(formData.get(field.name) || ""))])
+        .filter(([, message]) => message)
+    )
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors)
+      setTouchedFields(Object.fromEntries(fields.map((field) => [field.name, true])))
+      return
+    }
+
     setIsSubmitting(true)
 
     // אוסף את הערכים לפי שמות השדות כדי להתאים למבנה מודל Mongoose.
-    const formData = new FormData(event.currentTarget)
     const values = Object.fromEntries(formData.entries())
 
     // שדות מספריים נשמרים כמספרים, ומזהי ילדים מומר למערך מופרד בפסיקים.
@@ -60,6 +84,7 @@ function RegistrationForm({ title, endpoint, fields, verifyEmployeeAccess = fals
         {fields.map((field) => (
           <div className="form-field" key={field.name}>
             <label htmlFor={field.name}>{field.label}</label>
+            {field.hint && <small>{field.hint}</small>}
             <input
               id={field.name}
               name={field.name}
@@ -70,8 +95,40 @@ function RegistrationForm({ title, endpoint, fields, verifyEmployeeAccess = fals
               max={field.max}
               step={field.step}
               placeholder={field.placeholder}
+              aria-invalid={fieldErrors[field.name] ? "true" : undefined}
+              aria-describedby={fieldErrors[field.name] ? `${field.name}-error` : undefined}
+              onBlur={(event) => {
+                const value = event.currentTarget.value
+                setTouchedFields((current) => ({ ...current, [field.name]: true }))
+                setFieldErrors((current) => ({
+                  ...current,
+                  [field.name]: getFieldError(field, value),
+                }))
+              }}
+              onChange={(event) => {
+                const value = event.target.value
+
+                if (touchedFields[field.name]) {
+                  setFieldErrors((current) => ({
+                    ...current,
+                    [field.name]: getFieldError(field, value),
+                  }))
+                }
+              }}
+              onInvalid={() => {
+                setTouchedFields((current) => ({ ...current, [field.name]: true }))
+                setFieldErrors((current) => ({
+                  ...current,
+                  [field.name]: getFieldError(field, ""),
+                }))
+              }}
             />
             {field.help && <small>{field.help}</small>}
+            {fieldErrors[field.name] && (
+              <small id={`${field.name}-error`} className="error-message" role="alert">
+                {fieldErrors[field.name]}
+              </small>
+            )}
           </div>
         ))}
         {errorMessage && <p className="form-message error-message" role="alert">{errorMessage}</p>}
