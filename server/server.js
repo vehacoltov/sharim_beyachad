@@ -1,7 +1,12 @@
+/*
+ * express.static מפרסם את תיקיית uploads לפי relative URL השמור ב-MongoDB.
+ * הנתיב אינו מכיל absolute filesystem path כדי לשמור הפרדת שכבות ושימוש עתידי ב-CDN.
+ */
 require("dotenv").config()
 const mongoose = require("mongoose")
 const connectDB=require("./config/dbConn")
 const express = require("express")
+const path = require("path")
 const cors = require("cors")
 const corsOptions = require("./config/corsOptions")
 const { getJwtSecret } = require("./config/jwt")
@@ -15,6 +20,7 @@ connectDB()
 //middlewares
 app.use(express.json())
 app.use(cors(corsOptions))
+app.use("/uploads", express.static(path.join(__dirname, "uploads")))
 
 
 

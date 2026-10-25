@@ -1,4 +1,5 @@
 import { Navigate, useNavigate } from "react-router-dom"
+import ParentPA from "./Parent/ParentPA"
 
 // מסך היעד לאחר התחברות; נדרשים אסימון ופרטי משתמש ששמורים בדפדפן.
 function PersonalArea() {
@@ -15,6 +16,10 @@ function PersonalArea() {
 
   if (!accessToken || !user) {
     return <Navigate to="/" replace />
+  }
+
+  if (accountType === "parent") {
+    return <ParentPA />
   }
 
   // מסיר נתוני התחברות מקומיים ומחזיר את המשתמש למסך הכניסה.

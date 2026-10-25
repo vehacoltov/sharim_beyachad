@@ -39,7 +39,7 @@
   font-weight: 700;
 }
 
-.form-field input,
+.form-field input:not([type="checkbox"]),
 .form-field select {
   width: 100%;
   min-height: 44px;
@@ -47,6 +47,29 @@
   border: 1px solid #bac9d6;
   border-radius: 8px;
   background: #fff;
+}
+
+.form-field input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  justify-self: start;
+  accent-color: #16847a;
+}
+
+.form-field input[type="file"] {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.file-preview {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  justify-self: start;
+  border-radius: 8px;
 }
 
 .form-field input:focus,

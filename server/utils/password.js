@@ -1,4 +1,5 @@
 const bcrypt = require("bcrypt")
+const crypto = require("crypto")
 
 // מספר הסבבים קובע את עלות חישוב ה-hash; הגדלתו מקשה על ניחוש סיסמאות אך מאטה אימות.
 const SALT_ROUNDS = 12
@@ -12,6 +13,14 @@ const isValidPassword = (password) =>
 
 // bcrypt מוסיף salt אקראי כחלק מה-hash, ולכן לא שומרים או משווים את הסיסמה הגלויה ישירות.
 const hashPassword = (password) => bcrypt.hash(password, SALT_ROUNDS)
-const verifyPassword = (password, hash) => bcrypt.compare(password, hash)
+const isBcryptHash = (value) => typeof value === "string" && /^\$2[aby]\$\d{2}\$/.test(value)
+const verifyPassword = async (password, hash) => {
+    if (isBcryptHash(hash)) return bcrypt.compare(password, hash)
 
-module.exports = { isValidPassword, hashPassword, verifyPassword }
+    // תמיכה חד-פעמית ברישומים ישנים ששמרו טקסט גלוי עד שהכניסה הראשונה מעדכנת אותם ל-hash.
+    const passwordBuffer = Buffer.from(password)
+    const hashBuffer = Buffer.from(hash)
+    return passwordBuffer.length === hashBuffer.length && crypto.timingSafeEqual(passwordBuffer, hashBuffer)
+}
+
+module.exports = { isValidPassword, hashPassword, isBcryptHash, verifyPassword }
