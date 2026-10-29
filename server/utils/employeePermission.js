@@ -1,15 +1,14 @@
 const Permission = require("../models/Permission")
 const { isValidPassword, verifyPassword } = require("./password")
 
-// אלה הערכים היחידים שמודל Employee מקבל בשדה ההרשאה שלו.
-const EMPLOYEE_ROLES = ["manager", "canMatch", "Basic"]
+const REGISTRATION_ACTION = "registation"
 
-// מאתר הרשאת עובד לפי סיסמת הגישה, ומחזיר תפקיד רק אם יש התאמה יחידה ומוכרת.
+// מאתר הרשאה לפי סיסמת הגישה ומקבל רק הרשאה ייחודית שמורשית לרישום עובדים.
 const findEmployeePermission = async (accessPassword) => {
     // דוחים סיסמאות ריקות או ארוכות מהמגבלה הנתמכת על ידי bcrypt.
     if (!isValidPassword(accessPassword)) return null
 
-    // שני הערכים select:false במודל Permission, לכן מבקשים אותם במפורש לבדיקה בלבד.
+    // שם וסיסמה מוסתרים בברירת מחדל, ולכן נשלפים רק לצורך אימות הקוד.
     const permissions = await Permission.find().select("+name +password")
     const matchingPermissions = []
     // לא מסתפקים בהתאמה הראשונה: קוד הרשאה כפול ייחשב עמום ולא יאושר.
@@ -22,11 +21,8 @@ const findEmployeePermission = async (accessPassword) => {
     if (matchingPermissions.length !== 1) return null
 
     const matchingPermission = matchingPermissions[0]
-    // שם ההרשאה עצמו נשמר כ-bcrypt hash; משווים מול כל תפקיד מותר כדי לזהות אותו.
-    for (const role of EMPLOYEE_ROLES) {
-        if (await verifyPassword(role, matchingPermission.name)) return role
-    }
-    return null
+    if (!matchingPermission.validActions.includes(REGISTRATION_ACTION)) return null
+    return matchingPermission
 }
 
 module.exports = { findEmployeePermission }

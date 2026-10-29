@@ -102,6 +102,9 @@ const createModelController = ({
     // אם אינו מוגדר, משתמשים בשם המודל
     tokenRoleField,
 
+    // נתונים ציבוריים נוספים לתשובת התחברות, למשל פעולות Permission של עובד.
+    prepareLoginUser = async () => ({}),
+
     // פונקציה לביצוע ולידציות נוספות
     // מחזירה null כאשר הנתונים תקינים
     // אחרת מחזירה הודעת שגיאה
@@ -378,6 +381,10 @@ const createModelController = ({
                     ? document[tokenRoleField]
                     : model.modelName
             );
+            const loginUser = {
+                ...toPublicDocument(document),
+                ...await prepareLoginUser(document)
+            }
 
             // החזרת תשובה מוצלחת ללקוח
             return res.json({
@@ -385,7 +392,7 @@ const createModelController = ({
                 accessToken,
                 tokenType: "Bearer",
                 expiresIn: "1h",
-                user: toPublicDocument(document)
+                user: loginUser
             });
 
         } catch (error) {

@@ -27,8 +27,14 @@ npm start
 | `DATABASE_URI` | כן | מחרוזת החיבור ל־MongoDB |
 | `JWT_SECRET` | כן | סוד אקראי באורך 32 בתים לפחות, המשמש לחתימת JWT וגם ל־HMAC של שם הרשאה |
 | `PORT` | לא | פורט השרת; ברירת מחדל `7001` |
+| `ADMIN_PERMISSION_PASSWORD` | כן | סיסמת הרשאת admin שנוצרת ב-seed |
+| `BASIC_PERMISSION_PASSWORD` | כן | סיסמת הרשאת basic- שנוצרת ב-seed |
+| `MEDIUM_PERMISSION_PASSWORD` | כן | סיסמת הרשאת medium- שנוצרת ב-seed |
 
 השרת בודק את `JWT_SECRET` בזמן האתחול ולא עולה אם הסוד חסר או קצר מדי.
+הוא גם מחייב את שלוש סיסמאות ההרשאות, יוצר או מסנכרן את הרשומות לפני פתיחת
+הפורט, וממיר שיוכי הרשאה ישנים של עובדים ל־ObjectId references. `INITIAL_ADMIN_PASSWORD`
+נתמך כחלופה זמנית ל־`ADMIN_PERMISSION_PASSWORD` לצורך מעבר מההגדרה הקודמת.
 אין להעלות את `.env` למאגר הקוד.
 
 כתובת הבסיס המקומית היא `http://localhost:7001` (או הפורט שהוגדר). כל גוף
@@ -154,15 +160,21 @@ Many Requests`, כוללת `retryAfterSeconds` ומגדירה כותרת `Retry-
 
 `POST /permission/verify-employee-access` מקבל `{ "password": "..." }`.
 השרת משווה את הסיסמה ל־hash-ים של הרשאות, ומאשר רק אם נמצאה הרשאה יחידה
-שתואמת גם לאחד מתפקידי העובד המוגדרים (`manager`, `canMatch`, `Basic`).
-בתשובה מוחזר התפקיד המאושר, לא סיסמת ההרשאה או ה־hash.
-לכן שם הרשאה המיועדת לאישור עובד חייב להיות אחד משלושת הערכים האלה.
+שכוללת `registation` ב־`validActions`. בתשובה מוחזרים רק `id` ו־`validActions`,
+ולא שם ההרשאה או hash.
 
 בדיקה זו משמשת את חלונית ההרשמה בממשק, אך אינה תחליף לאימות בעת יצירת עובד:
 `POST /employee/register` וגם `POST /employee` בודקים שוב את
-`authorizationPassword` בצד השרת. ללא הרשאה תקינה לא נוצר עובד. העובד
-מקבל בשדה `permission` את התפקיד שנמצא, והתפקיד משמש גם בתביעת `role` של
-ה־JWT שלו. סיסמת ההרשאה מוסרת מגוף הנתונים לפני שמירת העובד.
+`authorizationPassword` בצד השרת. ללא הרשאה הכוללת `registation` לא נוצר עובד.
+בשדה `Employee.permission` נשמר `_id` של מסמך Permission, וסיסמת ההרשאה מוסרת
+מגוף הנתונים לפני שמירת העובד.
+
+באתחול נוצרים או מתעדכנים שלושה מסמכי הרשאה: `admin` עם פעולות
+`permissions`, `employees`, `events`, `matching`, `registation`;‏ `basic-` עם
+`registation`; ו־`medium-` עם `registation`, `events`, `matching`.
+כל בקשת API מוגנת טוענת את רשימת `validActions` העדכנית מהמסד. פעולת
+`employees` מגינה על CRUD עובדים, `permissions` על ניהול הרשאות, `events` על
+אירועים, ו־`matching` על קשרי ילד/מתנדב. פעולת `registation` נבדקת בעת יצירת עובד.
 
 #### שמירת שם וסיסמה
 
@@ -217,13 +229,13 @@ Many Requests`, כוללת `retryAfterSeconds` ומגדירה כותרת `Retry-
 | משאב | שדות |
 |---|---|
 | `Parent` | `email`, `password`, `id`, `children` |
-| `Employee` | `fullName`, `id`, `phone`, `userName`, `password`, `permission`, `workingTime`, `currentWorkingTime` |
+| `Employee` | `fullName`, `id`, `phone`, `userName`, `password`, `permission` (ObjectId reference), `workingTime`, `currentWorkingTime` |
 | `Volunteer` | `fullName`, `password`, `email`, `id`, `phone`, `age`, `seminar`, `detaling` |
 | `Child` | `fullName`, `parent`, `id`, `phone`, `anothwrPhone`, `age`, `epilepsy`, `sensitivity`, `medicines`, `canBeFilemed`, `detailing`, `notes`, `img`, `status`, `category` |
 | `ChildEvent` | `child`, `volunteer` |
 | `VolunteerEvent` | `child`, `volunteer`, `notes`, `favouredChild` |
 | `Event` | `name`, `id`, `Children`, `sumOfChilds`, `SavedPlaces`, `isActive`, `Volunteers`, `date`, `startReg`, `endReg`, `hour`, `detailingForParent`, `detailingForVolun` |
-| `Permission` | `id`, `name` (hash), `nameLookup` (HMAC), `password` (hash) |
+| `Permission` | `id`, `name` (hash), `nameLookup` (HMAC), `password` (hash), `validActions` (string array) |
 | `Counter` | `_id` — שם המונה; `seq` — המספר האחרון שהוקצה |
 
 במודל `Parent` השדה `id` הוא מזהה חיצוני ייחודי ומחרוזתי ומשמש להתחברות;

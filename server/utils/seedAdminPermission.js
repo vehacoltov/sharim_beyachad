@@ -1,13 +1,28 @@
 const { createHmac } = require("crypto")
 const Permission = require("../models/Permission")
+const Employee = require("../models/Employee")
 const Counter = require("../models/Counter")
 const { getJwtSecret } = require("../config/jwt")
-const { hashPassword } = require("./password")
+const { hashPassword, isValidPassword, verifyPassword } = require("./password")
 
-// ההרשאה נוצרת פעם אחת בלבד. מומלץ להגדיר INITIAL_ADMIN_PASSWORD בסביבת
-// ההרצה; ברירת המחדל נשמרת לצורך הפעלה מקומית ראשונית בלבד.
-const ADMIN_NAME = "admin"
-const ADMIN_PASSWORD = process.env.INITIAL_ADMIN_PASSWORD || "1234"
+const PERMISSION_DEFINITIONS = [
+    {
+        name: "admin",
+        passwordEnv: "ADMIN_PERMISSION_PASSWORD",
+        legacyPasswordEnv: "INITIAL_ADMIN_PASSWORD",
+        validActions: ["permissions", "employees", "events", "matching", "registation"]
+    },
+    {
+        name: "basic-",
+        passwordEnv: "BASIC_PERMISSION_PASSWORD",
+        validActions: ["registation"]
+    },
+    {
+        name: "medium-",
+        passwordEnv: "MEDIUM_PERMISSION_PASSWORD",
+        validActions: ["registation", "events", "matching"]
+    }
+]
 
 // bcrypt כולל salt אקראי, ולכן hash של אותו שם משתנה בכל יצירה ואינו מתאים
 // לחיפוש או לאינדקס ייחודי. HMAC עם מפתח השרת דטרמיניסטי, ומאפשר לזהות
@@ -48,29 +63,100 @@ const getNextPermissionId = async () => {
     }
 }
 
-// פעולה idempotent: חיפוש לפי nameLookup לפני יצירה מאפשר להריץ אותה בכל
-// הפעלה בלי להוסיף הרשאות admin כפולות. הסיסמה והשם נשמרים כ-bcrypt hashes.
-const ensureAdminPermission = async () => {
-    const nameLookup = createNameLookup(ADMIN_NAME)
-    const existingAdmin = await Permission.findOne({ nameLookup }).select("_id").lean()
-    if (existingAdmin) return false
+const getPermissionPassword = definition => {
+    const password = process.env[definition.passwordEnv] ||
+        (definition.legacyPasswordEnv ? process.env[definition.legacyPasswordEnv] : undefined)
+    if (!isValidPassword(password)) {
+        throw new Error(`${definition.passwordEnv} must be set to a non-empty password of at most 72 UTF-8 bytes`)
+    }
+    return password
+}
+
+const upsertPermission = async (definition, password) => {
+    const nameLookup = createNameLookup(definition.name)
+    const existing = await Permission.findOne({ nameLookup }).select("+password").exec()
+
+    if (existing) {
+        existing.validActions = definition.validActions
+        if (!existing.password || !(await verifyPassword(password, existing.password))) {
+            existing.password = await hashPassword(password)
+        }
+        await existing.save()
+        return existing
+    }
 
     try {
-        await Permission.create({
+        return await Permission.create({
             id: await getNextPermissionId(),
-            name: await hashPassword(ADMIN_NAME),
+            name: await hashPassword(definition.name),
             nameLookup,
-            password: await hashPassword(ADMIN_PASSWORD)
+            password: await hashPassword(password),
+            validActions: definition.validActions
         })
-        console.log("Initial admin permission created")
-        return true
     } catch (error) {
-        // שני מופעי שרת עלולים לבדוק במקביל ולא למצוא admin, ואז להתחרות
-        // על יצירתו. אינדקס unique מכריע את המרוץ; אם admin נוצר בינתיים,
-        // זו הצלחה שקולה ולא שגיאה שצריכה לעצור את השרת.
-        if (error.code === 11000 && await Permission.exists({ nameLookup })) return false
+        // מופעי שרת מקבילים יכולים להתחרות על יצירת אותה הרשאה. אינדקס ייחודי
+        // מכריע את המרוץ; במקרה כזה טוענים את הרשומה שנוצרה וממשיכים לעדכן אותה.
+        if (error.code === 11000) {
+            const createdByAnotherInstance = await Permission.findOne({ nameLookup }).select("+password").exec()
+            if (createdByAnotherInstance) {
+                createdByAnotherInstance.validActions = definition.validActions
+                if (!createdByAnotherInstance.password || !(await verifyPassword(password, createdByAnotherInstance.password))) {
+                    createdByAnotherInstance.password = await hashPassword(password)
+                }
+                await createdByAnotherInstance.save()
+                return createdByAnotherInstance
+            }
+        }
         throw error
     }
 }
 
-module.exports = { ensureAdminPermission }
+// ממיר עובדים שנוצרו לפני מעבר מ-role טקסטואלי ל-ObjectId reference.
+// collection API משמש כאן בכוונה כדי ש-Mongoose לא ינסה לבצע cast לערכי role הישנים.
+const migrateEmployeePermissions = async permissions => {
+    const targetIds = new Map(PERMISSION_DEFINITIONS.map((definition, index) => [
+        definition.name,
+        permissions[index]._id
+    ]))
+    const legacyNames = [
+        ["manager", "admin"],
+        ["Basic", "basic-"],
+        ["canMatch", "medium-"]
+    ]
+
+    for (const [legacyName, permissionName] of legacyNames) {
+        await Employee.collection.updateMany(
+            { permission: legacyName },
+            { $set: { permission: targetIds.get(permissionName) } }
+        )
+    }
+
+    // תפקיד טקסטואלי ישן שלא זוהה אינו מקבל הרשאות מוגברות; ממירים אותו ל-basic.
+    await Employee.collection.updateMany(
+        { permission: { $type: "string" } },
+        { $set: { permission: targetIds.get("basic-") } }
+    )
+    await Employee.collection.updateMany(
+        { $or: [{ permission: { $exists: false } }, { permission: null }] },
+        { $set: { permission: targetIds.get("basic-") } }
+    )
+}
+
+// רץ בכל אתחול: יוצר הרשאות חסרות, מסנכרן פעולות/סיסמאות מול env,
+// ואז מבצע מעבר בטוח של שיוכי העובדים הישנים ל-ObjectId references.
+const ensurePermissionSeeds = async () => {
+    const passwords = PERMISSION_DEFINITIONS.map(getPermissionPassword)
+    const permissions = []
+
+    for (let index = 0; index < PERMISSION_DEFINITIONS.length; index += 1) {
+        permissions.push(await upsertPermission(PERMISSION_DEFINITIONS[index], passwords[index]))
+    }
+
+    await migrateEmployeePermissions(permissions)
+    return permissions
+}
+
+module.exports = {
+    ensurePermissionSeeds,
+    ensureAdminPermission: ensurePermissionSeeds
+}

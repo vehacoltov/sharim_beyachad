@@ -7,6 +7,8 @@ const { hashPassword, isValidPassword } = require("../utils/password")
 const { findEmployeePermission } = require("../utils/employeePermission")
 const { getLoginLock, recordLoginFailure, clearLoginFailures } = require("../utils/loginRateLimiter")
 
+const VALID_ACTIONS = ["permissions", "employees", "events", "matching", "registation"]
+
 // bcrypt מייצר hash שונה בכל פעם בזכות salt אקראי, ולכן אין דרך לחפש לפי hash
 // של שם ידוע מראש או להשוות בין שני hash-ים כדי לבדוק אם השמות זהים.
 // לשם כך יוצרים HMAC דטרמיניסטי: אותו שם ואותו סוד יפיקו תמיד אותו ערך,
@@ -64,9 +66,9 @@ const preparePermissionFields = async (fields) => {
 
 const permissionController = createModelController({
     model: Permission,
-    // רק name ו-password מתקבלים מהלקוח. id מוקצה בשרת, ו-nameLookup הוא
+    // name, password ו-validActions מתקבלים רק במסלול ניהול מוגן. id מוקצה בשרת, ו-nameLookup הוא
     // שדה פנימי שנגזר מהשם; דחייתם מגינה מפני עקיפת הקצאת המזהים ובדיקת הייחודיות.
-    editableFields: ["name", "password"],
+    editableFields: ["name", "password", "validActions"],
     // מסירים מהתשובות את hash השם, את ערך ה-HMAC ואת hash הסיסמה.
     // גם אם שדות אלה נשלפו לצורך פעולה פנימית, הם לא ייחשפו ללקוח.
     privateFields: ["name", "nameLookup", "password"],
@@ -95,6 +97,13 @@ const permissionController = createModelController({
                 Buffer.byteLength(fields.name.trim(), "utf8") > 72)
         ) {
             return "Name must be a non-empty string of at most 72 UTF-8 bytes"
+        }
+        if (
+            "validActions" in fields &&
+            (!Array.isArray(fields.validActions) ||
+                fields.validActions.some(action => !VALID_ACTIONS.includes(action)))
+        ) {
+            return "validActions must be an array containing only supported actions"
         }
         return null
     },
@@ -148,7 +157,13 @@ permissionController.verifyEmployeeAccess = async (req, res) => {
         }
 
         clearLoginFailures(key)
-        return res.json({ authorized: true, permission })
+        return res.json({
+            authorized: true,
+            permission: {
+                id: permission.id,
+                validActions: permission.validActions
+            }
+        })
     } catch (error) {
         console.error("Failed to verify employee access permission:", error)
         return res.status(500).json({ message: "בדיקת הרשאת הגישה נכשלה" })

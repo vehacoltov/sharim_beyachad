@@ -1,5 +1,6 @@
 const createModelController = require("./modelControllerFactory")
 const Employee = require("../models/Employee")
+const Permission = require("../models/Permission")
 const { findEmployeePermission } = require("../utils/employeePermission")
 const { getLoginLock, recordLoginFailure, clearLoginFailures } = require("../utils/loginRateLimiter")
 const { isValidPassword } = require("../utils/password")
@@ -13,8 +14,11 @@ const employeeController = createModelController({
     privateFields: ["password","permission"],
     passwordField: "password",
     loginFields: ["userName"],
-    // התפקיד המאומת נכלל בתביעת role של ה-JWT שהשרת מנפיק לעובד.
-    tokenRoleField: "permission",
+    // מחזיר רק פעולות מורשות מה-reference, בלי לחשוף hash או פרטי Permission.
+    prepareLoginUser: async employee => {
+        const permission = await Permission.findById(employee.permission).select("validActions").lean()
+        return { validActions: permission?.validActions || [] }
+    },
     prepareRegistration: async (fields, req) => {
         const accessPassword = fields.authorizationPassword
         // חסרים או לא תקינים נדחים לפני חיפוש הרשאות או יצירת מסמך עובד.
@@ -51,10 +55,10 @@ const employeeController = createModelController({
             return { error: { status: 403, message: "סיסמת הרשאת הגישה אינה תקינה או אינה מורשית" } }
         }
 
-        // מסירים את סיסמת ההרשאה מהנתונים, ושומרים רק את התפקיד שאומת.
+        // מסירים את סיסמת ההרשאה מהנתונים ושומרים את מזהה Permission המאומת.
         const employeeFields = { ...fields }
         delete employeeFields.authorizationPassword
-        employeeFields.permission = permission
+        employeeFields.permission = permission._id
         const { key } = getLoginLock("employee-registration-access", ipAddress, "access")
         clearLoginFailures(key)
         return { fields: employeeFields }

@@ -1,5 +1,11 @@
 const createModelRouter = require("./modelRouteFactory")
 const employeeController = require("../controllers/EmployeeController")
+const requireAction = require("../middleware/requireAction")
 
-// בונה נתיבי CRUD ומחבר אותם לפעולות של EmployeeController.
-module.exports = createModelRouter(employeeController)
+// CRUD עובדים מוגן; login ו-register נשארים בנתיבים הייעודיים של הבקר.
+module.exports = createModelRouter(employeeController, {
+	getAll: requireAction("employees"),
+	getById: requireAction("employees"),
+	update: requireAction("employees"),
+	remove: requireAction("employees")
+})
