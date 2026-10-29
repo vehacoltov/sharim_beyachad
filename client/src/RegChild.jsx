@@ -6,13 +6,47 @@
 import RegistrationForm from "./RegistrationForm"
 
 const fields = [
-  { name: "fullName", label: "שם מלא", type: "text", autoComplete: "name", required: true, requiredMessage: "יש להזין שם מלא." },
-  { name: "id", label: "מספר זהות", type: "text", autoComplete: "off" },
-  { name: "phone", label: "טלפון", type: "tel", autoComplete: "tel", required: true, requiredMessage: "יש להזין מספר טלפון." },
-  { name: "anothwrPhone", label: "טלפון נוסף", type: "tel", autoComplete: "tel" },
+  {
+    name: "fullName",
+    label: "שם מלא",
+    type: "text",
+    autoComplete: "name",
+    required: true,
+    requiredMessage: "יש להזין שם מלא בעברית.",
+    validate: (value) => /^[א-ת]+(?:\s[א-ת]+)*$/u.test(value.trim()),
+    validationMessage: "השם המלא יכול להכיל אותיות בעברית ורווחים בלבד.",
+  },
+  {
+    name: "id",
+    label: "מספר זהות",
+    type: "text",
+    autoComplete: "off",
+    required: true,
+    requiredMessage: "יש להזין מספר זהות.",
+    validate: (value) => /^\d{9}$/u.test(value),
+    validationMessage: "מספר הזהות חייב להכיל בדיוק 9 ספרות.",
+  },
+  {
+    name: "phone",
+    label: "טלפון",
+    type: "tel",
+    autoComplete: "tel",
+    required: true,
+    requiredMessage: "יש להזין מספר טלפון המתחיל ב-0.",
+    validate: (value) => /^0\d{8,9}$/u.test(value),
+    validationMessage: "מספר הטלפון חייב להכיל 9 או 10 ספרות ולהתחיל ב-0.",
+  },
+  {
+    name: "anothwrPhone",
+    label: "טלפון נוסף",
+    type: "tel",
+    autoComplete: "tel",
+    validate: (value) => /^0\d{8,9}$/u.test(value),
+    validationMessage: "מספר הטלפון הנוסף חייב להכיל 9 או 10 ספרות ולהתחיל ב-0.",
+  },
   { name: "age", label: "גיל", type: "number", min: 0, step: 1 },
-  { name: "epilepsy", label: "אפילפסיה", type: "text", autoComplete: "off" },
-  { name: "sensitivity", label: "רגישויות או אלרגיות", type: "text", autoComplete: "off" },
+  { name: "epilepsy", label: "האם יש לילד/ה אפילפסיה,אם כן פרט/י", type: "text", autoComplete: "off" },
+  { name: "sensitivity", label: "האם יש לילד/ה רגישויות או אלרגיות, אם כן פרט/י", type: "text", autoComplete: "off" },
   { name: "medicines", label: "תרופות", type: "text", autoComplete: "off" },
   { name: "canBeFilemed", label: "הילד/ה יכול/ה להיות מצולם/ת", type: "boolean" },
   { name: "detailing", label: "פרטים נוספים", type: "text", autoComplete: "off" },
@@ -38,7 +72,7 @@ const fields = [
   },
 ]
 
-function RegChild({ parent_Id }) {
+function RegChild({ parent_Id, setRegChild, onSuccess }) {
   const accountType = localStorage.getItem("accountType")
   let loggedInParentId = parent_Id
 
@@ -56,12 +90,13 @@ function RegChild({ parent_Id }) {
 
   return (
     <RegistrationForm
-      
+      setRegChild={setRegChild}
       title="הרשמת ילד/ה"
       endpoint="/child"
       submitEndpoint="/child"
       fields={visibleFields}
       hiddenValues={loggedInParentId ? { parent: loggedInParentId } : {}}
+      onSuccess={onSuccess}
     />
   )
 }

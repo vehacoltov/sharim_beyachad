@@ -20,6 +20,8 @@ const fields = [
     // מנחה את הדפדפן לא להציע מילוי אוטומטי
     autoComplete: "off",
     required: true,
+    validate: (value) => /^\d{9}$/u.test(value),
+    validationMessage: "מספר הזהות חייב להכיל בדיוק 9 ספרות.",
   },
 
   {

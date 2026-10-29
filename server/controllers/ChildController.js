@@ -308,6 +308,10 @@ controller.create = async (req, res) => {
          */
         const fields = normalizeFields(req.body || {})
 
+        // img מתקבל רק דרך req.file; אובייקט JSON בשדה זה אינו קובץ או נתיב תקין.
+        // הנתיב נכתב כאן רק אחרי שה-storage service שמר ואימת את תוכן התמונה.
+        delete fields.img
+
 
         /**
          * בדיקה שלא התקבלה בקשה ריקה.

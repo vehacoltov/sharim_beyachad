@@ -188,13 +188,14 @@ Many Requests`, כוללת `retryAfterSeconds` ומגדירה כותרת `Retry-
 | `PUT /event` | עדכון אירוע; `_id` נשלח בגוף הבקשה |
 | `DELETE /event` | מחיקת אירוע; `_id` נשלח בגוף הבקשה |
 
-שדות היצירה המוכרים: `name`, `id`, `Children`, `Volunteers`, `date`, `hour`,
-`detailing`, `sumOfChilds`, `SavedPlaces`, `isActive`. השדה `hour` אופציונלי
-ומקבל שעה בפורמט 24 שעות `HH:mm`, לדוגמה `18:30`.
+שדות היצירה המוכרים: `name`, `id`, `Children`, `Volunteers`, `date`, `startReg`,
+`endReg`, `hour`, `detailingForParent`, `detailingForVolun`, `sumOfChilds`,
+`SavedPlaces`, `isActive`. שדות `startReg` ו-`endReg` הם תאריך ושעה (Date),
+והשדה `hour` אופציונלי ומקבל שעה בפורמט 24 שעות `HH:mm`, לדוגמה `18:30`.
 
 בעדכון יש לשלוח `_id` ושדה אחד או יותר מתוך: `name`, `Children`,
-`Volunteers`, `date`, `hour`, `detailing`, `sumOfChilds`, `SavedPlaces`,
-`isActive`.
+`Volunteers`, `date`, `startReg`, `endReg`, `hour`, `detailingForParent`,
+`detailingForVolun`, `sumOfChilds`, `SavedPlaces`, `isActive`.
 מחיקה מקבלת גוף כמו `{ "_id": "מזהה MongoDB" }`.
 
 ### קודי שגיאה נפוצים
@@ -221,7 +222,7 @@ Many Requests`, כוללת `retryAfterSeconds` ומגדירה כותרת `Retry-
 | `Child` | `fullName`, `parent`, `id`, `phone`, `anothwrPhone`, `age`, `epilepsy`, `sensitivity`, `medicines`, `canBeFilemed`, `detailing`, `notes`, `img`, `status`, `category` |
 | `ChildEvent` | `child`, `volunteer` |
 | `VolunteerEvent` | `child`, `volunteer`, `notes`, `favouredChild` |
-| `Event` | `name`, `id`, `Children`, `sumOfChilds`, `SavedPlaces`, `isActive`, `Volunteers`, `date`, `hour`, `detailing` |
+| `Event` | `name`, `id`, `Children`, `sumOfChilds`, `SavedPlaces`, `isActive`, `Volunteers`, `date`, `startReg`, `endReg`, `hour`, `detailingForParent`, `detailingForVolun` |
 | `Permission` | `id`, `name` (hash), `nameLookup` (HMAC), `password` (hash) |
 | `Counter` | `_id` — שם המונה; `seq` — המספר האחרון שהוקצה |
 

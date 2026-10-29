@@ -15,7 +15,15 @@ const fields = [
   },
   // דוא"ל ומספר זהות מזוהים כערכים ייחודיים בטופס ההרשמה.
   { name: "email", label: "דואר אלקטרוני", type: "email", autoComplete: "email", required: true },
-  { name: "id", label: "מספר זהות", type: "text", autoComplete: "off", required: true },
+  {
+    name: "id",
+    label: "מספר זהות",
+    type: "text",
+    autoComplete: "off",
+    required: true,
+    validate: (value) => /^\d{9}$/u.test(value),
+    validationMessage: "מספר הזהות חייב להכיל בדיוק 9 ספרות.",
+  },
   // מספר טלפון הוא מחרוזת כדי לתמוך בקידומת 0 ואינו שדה מספרי.
   {
     name: "phone",

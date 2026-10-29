@@ -26,6 +26,8 @@ import { api, getErrorMessage } from "./api"
  * במקום להגדיר בנפרד את כל שדות הטופס.
  */
 function RegistrationForm({
+  setRegChild,
+  onSuccess,
   title,
   endpoint,
   fields,
@@ -231,29 +233,29 @@ function RegistrationForm({
      */
     const values = Object.fromEntries(formData.entries())
 
-    
-/**
- * טיפול בשדות מסוג file לפני שליחת הנתונים לשרת.
- *
- * FormData מחזירה עבור input מסוג file אובייקט File,
- * המכיל מידע על הקובץ שנבחר.
- *
- * עוברים על הגדרות השדות ומאתרים שדות מסוג file.
- *
- * formData.get(field.name):
- * מחזירה את אובייקט ה-File של השדה.
- *
- * שדה קובץ נשמר כאובייקט File ולא כמחרוזת של שמו בלבד.
- * כך Multipart/FormData יכול להעביר את תוכן הקובץ לשרת,
- * ואילו axios מייצר את boundary הנדרש ללא הגדרת Content-Type ידנית.
- */
-for (const field of fields) {
-  if (field.type === "file") {
-    const file = formData.get(field.name)
-    if (file instanceof File && file.size > 0) values[field.name] = file
-    else delete values[field.name]
-  }
-}
+
+    /**
+     * טיפול בשדות מסוג file לפני שליחת הנתונים לשרת.
+     *
+     * FormData מחזירה עבור input מסוג file אובייקט File,
+     * המכיל מידע על הקובץ שנבחר.
+     *
+     * עוברים על הגדרות השדות ומאתרים שדות מסוג file.
+     *
+     * formData.get(field.name):
+     * מחזירה את אובייקט ה-File של השדה.
+     *
+     * שדה קובץ נשמר כאובייקט File ולא כמחרוזת של שמו בלבד.
+     * כך Multipart/FormData יכול להעביר את תוכן הקובץ לשרת,
+     * ואילו axios מייצר את boundary הנדרש ללא הגדרת Content-Type ידנית.
+     */
+    for (const field of fields) {
+      if (field.type === "file") {
+        const file = formData.get(field.name)
+        if (file instanceof File && file.size > 0) values[field.name] = file
+        else delete values[field.name]
+      }
+    }
 
 
 
@@ -446,11 +448,19 @@ for (const field of fields) {
        * המסך הבא יכול לקרוא את ההודעה
        * באמצעות useLocation.
        */
-      navigate("/", {
-        state: {
-          message: "ההרשמה הושלמה. אפשר להתחבר למערכת.",
-        },
-      })
+      if (setRegChild) {
+        setRegChild(false)
+        onSuccess?.()
+      }
+      else {
+        navigate("/", {
+          state: {
+            message: "ההרשמה הושלמה. אפשר להתחבר למערכת.",
+          },
+        })
+      }
+
+
 
     } catch (error) {
 
@@ -462,7 +472,27 @@ for (const field of fields) {
        *
        * שמירת ההודעה ב-State גורמת להצגתה בטופס.
        */
-      setErrorMessage(getErrorMessage(error))
+      const serverDetails = error.response?.data?.details || {}
+      const visibleFieldNames = new Set(fields.map((field) => field.name))
+      const mappedFieldErrors = Object.fromEntries(
+        Object.entries(serverDetails)
+          .filter(([name]) => visibleFieldNames.has(name))
+          .map(([name, message]) => [name, String(message)])
+      )
+
+      if (Object.keys(mappedFieldErrors).length > 0) {
+        setFieldErrors(mappedFieldErrors)
+        setTouchedFields((current) => ({
+          ...current,
+          ...Object.fromEntries(Object.keys(mappedFieldErrors).map((name) => [name, true])),
+        }))
+      }
+
+      setErrorMessage(
+        Object.keys(mappedFieldErrors).length > 0
+          ? "חלק מהשדות אינם תקינים. יש לבדוק את השדות המסומנים."
+          : getErrorMessage(error)
+      )
 
     } finally {
 
@@ -531,6 +561,7 @@ for (const field of fields) {
                     : field.type
               } autoComplete={field.autoComplete}
               accept={field.accept}
+              className={field.type === "file" ? "file-input" : undefined}
               required={field.required}
               min={field.min}
               max={field.max}

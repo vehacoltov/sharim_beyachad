@@ -4,7 +4,15 @@ import RegistrationForm from "./RegistrationForm"
 const fields = [
   // פרטים בסיסיים של העובד; שם מלא, מספר זהות ושם משתמש נדרשים במודל.
   { name: "fullName", label: "שם מלא", type: "text", autoComplete: "name", required: true },
-  { name: "id", label: "מספר זהות", type: "text", autoComplete: "off", required: true },
+  {
+    name: "id",
+    label: "מספר זהות",
+    type: "text",
+    autoComplete: "off",
+    required: true,
+    validate: (value) => /^\d{9}$/u.test(value),
+    validationMessage: "מספר הזהות חייב להכיל בדיוק 9 ספרות.",
+  },
   { name: "phone", label: "טלפון", type: "tel", autoComplete: "tel" },
   { name: "userName", label: "שם משתמש", type: "text", autoComplete: "username", required: true },
   // שעות העבודה אופציונליות; הסכמה מגדירה להן ברירת מחדל אפס.

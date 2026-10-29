@@ -23,9 +23,9 @@ const employeeSchema = mongoose.Schema({
         required:true
     },
     permission:{
-        type:String,
-        enum:["manager","canMatch","Basic"],
-        default:"Basic"
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Permission",
+        required: true
     },
     workingTime:{
         type:Number,

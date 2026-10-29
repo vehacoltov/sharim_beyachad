@@ -21,6 +21,10 @@ const permissionSchema = mongoose.Schema({
         type: String,
         required: true,
         select: false
+    },
+    validActions: {
+        type: [String],
+        default: []
     }
 }, {
     timestamps: true

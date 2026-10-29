@@ -10,6 +10,7 @@ const path = require("path")
 const cors = require("cors")
 const corsOptions = require("./config/corsOptions")
 const { getJwtSecret } = require("./config/jwt")
+const { ensureAdminPermission } = require("./utils/seedAdminPermission")
 const PORT = Number(process.env.PORT) || 7001
 const app = express()
 
@@ -40,10 +41,19 @@ app.get("/", (req, res) => {
 
 
 
-mongoose.connection.once('open', () => {
+mongoose.connection.once('open', async () => {
     console.log('Connected to MongoDB')
-    app.listen(PORT, () => console.log(`Server running on port
-${PORT}`))
+    try {
+        // משלימים את הרשאת admin לאחר שהמסד זמין ולפני קבלת בקשות.
+        // אם ה-seed נכשל, לא פותחים שרת שחסר בו חשבון האתחול הנדרש.
+        await ensureAdminPermission()
+        app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
+    } catch (error) {
+        // כשל ב-seed הוא כשל אתחול: יציאה מונעת מצב שבו חלק מהמערכת זמין
+        // וחלק מתהליכי ההרשאה אינם יכולים לפעול כראוי.
+        console.error("Failed to ensure initial admin permission:", error)
+        process.exit(1)
+    }
 })
 mongoose.connection.on('error', err => {
     console.log(err)

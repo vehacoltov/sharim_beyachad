@@ -36,11 +36,20 @@ const eventSchema = mongoose.Schema({
         type:Date,
         required:true
     },
+    startReg: {
+        type: Date
+    },
+    endReg: {
+        type: Date
+    },
     hour: {
         type: String,
         match: /^([01]\d|2[0-3]):[0-5]\d$/
     },
-    detailing:{
+    detailingForParent: {
+        type: String
+    },
+    detailingForVolun:{
         type:String
     }
 }, {
