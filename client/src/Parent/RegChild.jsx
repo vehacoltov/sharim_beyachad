@@ -3,7 +3,7 @@
  * הסופי לדרישות ול-enum. img מועבר כקובץ בתוך multipart ולא כמחרוזת שם.
  * הסתרת employee-only לפי localStorage היא UX בלבד: אין להסתמך עליה כהגנת API.
  */
-import RegistrationForm from "./RegistrationForm"
+import RegistrationForm from "../Registration/RegistrationForm"
 
 const fields = [
   {

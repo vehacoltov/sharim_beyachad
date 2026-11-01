@@ -1,7 +1,7 @@
 
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { api, getErrorMessage } from "./api"
+import { api, getErrorMessage } from "../api"
 
 /**
  * קומפוננטת הרשמה כללית להורה, מתנדב ועובד.
@@ -197,6 +197,7 @@ function RegistrationForm({
     if (Object.keys(validationErrors).length > 0) {
 
       setFieldErrors(validationErrors)
+      setErrorMessage("חלק מהשדות אינם תקינים. יש לבדוק את השדות המסומנים.")
 
       /**
        * מסמנים את כל השדות כ-touched.
