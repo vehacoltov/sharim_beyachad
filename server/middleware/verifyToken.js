@@ -1,5 +1,10 @@
 const { verifyAccessToken } = require("../config/jwt")
 
+/**
+ * Middleware של Authentication: מאמת Bearer JWT ומציב ב-req.user רק מזהה ותפקיד.
+ * טוקן חסר, פגום או שפג תוקפו מחזיר 401; שגיאת תשתית בלתי צפויה נרשמת ומחזירה 500.
+ * next מופעל רק לאחר אימות מוצלח; תפקיד המשתמש אינו כשלעצמו הרשאת פעולה.
+ */
 const verifyToken = (req, res, next) => {
     const authorization = req.headers.authorization
     // דורשים את סכמת Bearer התקנית, שבה הלקוח שולח את האסימון בכותרת Authorization.

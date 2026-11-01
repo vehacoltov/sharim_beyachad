@@ -22,6 +22,7 @@
 
 const createModelController = require("./modelControllerFactory")
 const Child = require("../models/Child")
+const Parent = require("../models/Parent")
 const fileStorage = require("../services/fileStorageService")
 
 
@@ -69,6 +70,30 @@ const controller = createModelController({
         "category"
     ]
 })
+
+/**
+ * מחליפה את getAll הכללית עבור הורה: מאמתת שהחשבון קיים ומסננת ב-MongoDB
+ * לפי parent מתוך req.user, שנקבע מה-JWT ולא מגוף הבקשה.
+ * עובדים ממשיכים לפעולת CRUD המקורית רק אחרי requireAction("matching").
+ */
+const getAllChildren = controller.getAll
+controller.getAll = async (req, res) => {
+    if (req.user?.role !== "Parent") {
+        return getAllChildren(req, res)
+    }
+
+    try {
+        const parent = await Parent.findById(req.user.id).select("_id").lean()
+        if (!parent) {
+            return res.status(401).json({ message: "חשבון ההורה אינו קיים או שאינו פעיל" })
+        }
+        const children = await Child.find({ parent: req.user.id }).lean()
+        return res.json(children)
+    } catch (error) {
+        console.error("Failed to fetch the parent's children:", error)
+        return res.status(500).json({ message: "טעינת פרטי הילדים נכשלה" })
+    }
+}
 
 
 /**

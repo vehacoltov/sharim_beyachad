@@ -173,8 +173,10 @@ Many Requests`, כוללת `retryAfterSeconds` ומגדירה כותרת `Retry-
 `permissions`, `employees`, `events`, `matching`, `registation`;‏ `basic-` עם
 `registation`; ו־`medium-` עם `registation`, `events`, `matching`.
 כל בקשת API מוגנת טוענת את רשימת `validActions` העדכנית מהמסד. פעולת
-`employees` מגינה על CRUD עובדים, `permissions` על ניהול הרשאות, `events` על
-אירועים, ו־`matching` על קשרי ילד/מתנדב. פעולת `registation` נבדקת בעת יצירת עובד.
+`employees` מגינה על ניהול הורים, מתנדבים ועובדים; `permissions` על ניהול
+הרשאות; `events` על שינוי אירועים; ו־`matching` על מידע ילדים וקשרי
+ילד/מתנדב. הורה רשאי לגשת רק לילד המשויך אליו, ומתנדב/הורה רשאים לעדכן
+רק את החשבון שלהם. פעולת `registation` נבדקת בעת יצירת עובד.
 
 #### שמירת שם וסיסמה
 
@@ -255,9 +257,15 @@ ObjectId של MongoDB.
 Authorization: Bearer <token>
 ```
 
-קיימת middleware לאימות JWT בקובץ `middleware/verifyToken.js`, אך היא אינה
-מחוברת כרגע לנתיבי המשאבים ב־`server.js`. לכן הנתיבים המתועדים לעיל אינם
-מוגנים באמצעותה בשלב זה; קבלת JWT בהתחברות אינה כשלעצמה הגנה על נתיבי CRUD.
+`GET /auth/me` דורש Bearer Token תקין ומחזיר את פרטי החשבון ואת הרשאות
+העובד כפי שהם שמורים כרגע במסד. כך הלקוח משחזר התחברות לאחר רענון בלי
+לסמוך על עותק משתמש מקומי.
+
+`middleware/verifyToken.js` מאמת זהות וחתימת JWT. `middleware/requireAction.js`
+מבצע Authorization נפרד: הוא טוען בכל בקשה את הרשאת העובד העדכנית ומחזיר
+`403` אם הפעולה אינה מותרת. נתיבי ההורה, המתנדב והילד בודקים בנוסף בעלות
+על הרשומה. הרשמה והתחברות נשארות פתוחות; פעולות ניהול ונתונים רגישים דורשות
+את האימות וההרשאה המתאימים.
 
 ## העברות נתונים קיימים
 
@@ -302,6 +310,10 @@ npm run migrate:parent-username
 | `utils/loginRateLimiter.js` | ספירת ניסיונות שגויים וחסימה זמנית בזיכרון |
 | `utils/employeePermission.js` | אימות סיסמת גישה ומיפוי הרשאה לתפקיד עובד |
 | `middleware/verifyToken.js` | בדיקת JWT בכותרת Authorization |
+| `middleware/requireAction.js` | בדיקת הרשאת פעולה עדכנית לעובד |
+| `middleware/requireUserAccess.js` | בדיקת בעלות משתמש או הרשאת עובד |
+| `routes/authRoute.js` | endpoint לשחזור המשתמש המחובר |
+| `controllers/AuthController.js` | טעינת חשבון והרשאות עדכניות |
 | `models/` | סכמות MongoDB |
 | `controllers/modelControllerFactory.js` | פעולות CRUD משותפות, ולידציה, hashing והתחברות |
 | `controllers/` | הגדרות פעולות לכל מודל |

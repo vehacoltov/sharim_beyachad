@@ -1,9 +1,10 @@
 /*
  * תצורת טופס הילד מתרגמת את שדות Child לשדות UI בלבד; Mongoose נשאר מקור
  * הסופי לדרישות ול-enum. img מועבר כקובץ בתוך multipart ולא כמחרוזת שם.
- * הסתרת employee-only לפי localStorage היא UX בלבד: אין להסתמך עליה כהגנת API.
+ * שדות צוות מוסתרים לפי AuthContext לצורכי UX בלבד; השרת אוכף גישה ושייכות.
  */
 import RegistrationForm from "../Registration/RegistrationForm"
+import { useAuth } from "../useAuth"
 
 const fields = [
   {
@@ -72,20 +73,11 @@ const fields = [
   },
 ]
 
-function RegChild({ parent_Id, setRegChild, onSuccess }) {
-  const accountType = localStorage.getItem("accountType")
-  let loggedInParentId = parent_Id
-
-  if (!loggedInParentId) {
-    try {
-      const loggedInUser = JSON.parse(localStorage.getItem("loggedInUser") || "null")
-      loggedInParentId = loggedInUser?._id || loggedInUser?.id
-    } catch {
-      loggedInParentId = undefined
-    }
-  }
+function RegChild({ setRegChild, onSuccess }) {
+  const { user, role } = useAuth()
+  const loggedInParentId = role === "parent" ? user?._id : undefined
   const visibleFields = fields.filter((field) =>
-    !["status", "category", "notes"].includes(field.name) || accountType === "employee"
+    !["status", "category", "notes"].includes(field.name) || role === "employee"
   )
 
   return (

@@ -1,3 +1,7 @@
+import { useNavigate } from "react-router-dom"
+import { useAuth } from "../useAuth"
+import Can from "../Can"
+
 const actionLabels = {
   permissions: "ניהול הרשאות",
   employees: "ניהול עובדים",
@@ -6,24 +10,34 @@ const actionLabels = {
   registation: "רישום עובדים",
 }
 
-const EmploeePA = ({ user, onSignOut }) => {
-  const validActions = Array.isArray(user?.validActions) ? user.validActions : []
+const EmploeePA = () => {
+  const navigate = useNavigate()
+  const { permissions, logout } = useAuth()
+  const signOut = () => {
+    logout()
+    navigate("/", { replace: true })
+  }
 
   return (
     <main className="page-shell">
       <section className="auth-card" dir="rtl">
         <h1>האזור האישי לעובד</h1>
+        <Can permission="permissions">
+          <p>חשבון זה כולל הרשאות ניהול.</p>
+        </Can>
         <p>ההרשאות הפעילות בחשבון:</p>
-        {validActions.length > 0 ? (
+        {permissions.length > 0 ? (
           <ul>
-            {validActions.map((action) => (
-              <li key={action}>{actionLabels[action] || action}</li>
+            {permissions.map((action) => (
+              <Can permission={action} key={action}>
+                <li>{actionLabels[action] || action}</li>
+              </Can>
             ))}
           </ul>
         ) : (
           <p>לא הוגדרו פעולות מורשות לחשבון.</p>
         )}
-        <button className="primary-button" type="button" onClick={onSignOut}>יציאה</button>
+        <button className="primary-button" type="button" onClick={signOut}>יציאה</button>
       </section>
     </main>
   );

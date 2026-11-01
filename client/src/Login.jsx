@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { api, getErrorMessage } from "./api"
+import { useAuth } from "./useAuth"
 
 // לכל סוג חשבון מוגדר נתיב השרת ושדה הזיהוי המתאים לו.
 const accountTypes = {
@@ -22,13 +23,18 @@ const accountTypes = {
 function Login() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { login } = useAuth()
   const [accountType, setAccountType] = useState("parent")
   const [errorMessage, setErrorMessage] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [registrationDialog, setRegistrationDialog] = useState("")
   const [authorizationPassword, setAuthorizationPassword] = useState("")
 
-  // שולח את פרטי ההתחברות ושומר את האסימון שהשרת מחזיר בהצלחה.
+  /**
+   * מעבירה פרטי כניסה ל-AuthContext, שמעדכן session רק לאחר תשובת שרת תקינה.
+   * בהצלחה חוזרים לנתיב המקורי אם נשמר, אחרת לאזור האישי; finally משחרר
+   * את מצב הטעינה גם אם השרת דחה את פרטי הכניסה.
+   */
   const handleLogin = async (event) => {
     event.preventDefault()
     setErrorMessage("")
@@ -42,12 +48,9 @@ function Login() {
     }
 
     try {
-      // שומר את האסימון ואת המשתמש כדי לאפשר ניווט לאזור האישי.
-      const response = await api.post(account.endpoint, credentials)
-      localStorage.setItem("accessToken", response.data.accessToken)
-      localStorage.setItem("loggedInUser", JSON.stringify(response.data.user))
-      localStorage.setItem("accountType", accountType)
-      navigate("/personal")
+      await login(accountType, account.endpoint, credentials)
+      const destination = location.state?.from?.pathname || "/personal"
+      navigate(destination, { replace: true })
     } catch (error) {
       // במקרה של חסימה, מציג את זמן ההמתנה שהשרת מחזיר.
       const retryAfter = error.response?.data?.retryAfterSeconds
@@ -61,13 +64,20 @@ function Login() {
     }
   }
 
+  /**
+   * סוגרת את חלונית ההרשמה ומנקה סיסמת גישה זמנית לפני מעבר למסך אחר,
+   * כדי שהערך לא יישאר בטופס אם המשתמש יפתח אותו מחדש.
+   */
   const openRegistration = (path) => {
     setRegistrationDialog("")
     setAuthorizationPassword("")
     navigate(path)
   }
 
-  // מאמת מול השרת שסיסמת הרשאת העובד קיימת לפני פתיחת טופס הרישום.
+  /**
+   * בודקת מול השרת קוד הרשאה לעובד לפני הצגת טופס הרישום.
+   * הבדיקה מיועדת לזרימת הממשק; השרת מאמת את ההרשאה שוב בזמן יצירת העובד.
+   */
   const verifyEmployeeAccess = async (event) => {
     event.preventDefault()
     setErrorMessage("")

@@ -1,0 +1,46 @@
+{
+  "name": "git-hunk-keep-undo",
+  "displayName": "Git Hunk Keep/Undo",
+  "description": "Review uncommitted Git hunks with Keep and Undo actions in the editor",
+  "version": "0.1.0",
+  "publisher": "local-tools",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "gitHunkKeepUndo.refresh",
+        "title": "Git Hunk Keep/Undo: Refresh Review"
+      },
+      {
+        "command": "gitHunkKeepUndo.keepHunk",
+        "title": "Git Hunk Keep/Undo: Keep Hunk"
+      },
+      {
+        "command": "gitHunkKeepUndo.undoHunk",
+        "title": "Git Hunk Keep/Undo: Undo Hunk"
+      }
+    ],
+    "configuration": {
+      "title": "Git Hunk Keep/Undo",
+      "properties": {
+        "gitHunkKeepUndo.highlightColor": {
+          "type": "string",
+          "default": "rgba(46, 160, 67, 0.20)",
+          "description": "Background color for added lines that have not been undone."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}

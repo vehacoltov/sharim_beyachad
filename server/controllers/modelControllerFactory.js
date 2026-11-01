@@ -375,12 +375,10 @@ const createModelController = ({
 
             // יצירת JWT לאחר אימות מוצלח
             // התפקיד נלקח מהמסמך או משם המודל
-            const accessToken = createAccessToken(
-                document,
-                tokenRoleField
-                    ? document[tokenRoleField]
-                    : model.modelName
-            );
+            const accountRole = tokenRoleField
+                ? document[tokenRoleField]
+                : model.modelName;
+            const accessToken = createAccessToken(document, accountRole);
             const loginUser = {
                 ...toPublicDocument(document),
                 ...await prepareLoginUser(document)
@@ -392,6 +390,8 @@ const createModelController = ({
                 accessToken,
                 tokenType: "Bearer",
                 expiresIn: "1h",
+                role: model.modelName.toLowerCase(),
+                permissions: Array.isArray(loginUser.validActions) ? loginUser.validActions : [],
                 user: loginUser
             });
 

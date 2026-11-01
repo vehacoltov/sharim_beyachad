@@ -1,8 +1,9 @@
 import { useState } from "react"
 import { api, getErrorMessage } from "../api"
+import { useAuth } from "../useAuth"
 
-const UpdateParent = ({ user, onCancel, onSuccess }) => {
-    // const user = JSON.parse(localStorage.getItem("loggedInUser") || "null")
+const UpdateParent = ({ onCancel, onSuccess }) => {
+    const { user, refreshUser } = useAuth()
 
     const [email, setEmail] = useState(user?.email || "")
     const [password, setPassword] = useState("")
@@ -22,16 +23,9 @@ const UpdateParent = ({ user, onCancel, onSuccess }) => {
         }
 
         try {
-            const accessToken = localStorage.getItem("accessToken")
-            const response = await api.patch(`/parent/${user._id}`, payload, {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            })
-
-            // מעדכנים את פרטי המשתמש המקומיים לפי התשובה מהשרת.
-            const updatedUser = { ...user, ...response.data }
-            localStorage.setItem("loggedInUser", JSON.stringify(updatedUser))
+            await api.patch(`/parent/${user._id}`, payload)
+            // מרעננים מהשרת כדי שה-Context יכיל את הנתונים המאומתים לאחר העדכון.
+            const updatedUser = await refreshUser()
             onSuccess?.(updatedUser)
         } catch (error) {
             setErrorMessage(getErrorMessage(error))
@@ -85,6 +79,4 @@ const UpdateParent = ({ user, onCancel, onSuccess }) => {
 }
 
 export default UpdateParent
-
-
 

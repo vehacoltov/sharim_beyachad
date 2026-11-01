@@ -1,35 +1,20 @@
 import { useState } from "react"
-import { Navigate, useNavigate } from "react-router-dom"
-import RegChild from "../RegChild"
+import { useNavigate } from "react-router-dom"
+import RegChild from "./RegChild"
 import UpdateParent from "./UpdateParent"
+import { useAuth } from "../useAuth"
+import Can from "../Can"
 
-// מסך היעד לאחר התחברות; נדרשים אסימון ופרטי משתמש ששמורים בדפדפן.
+// האזור קורא את זהות ההורה מה-Context במקום לפרש נתונים מקומיים מהדפדפן.
 function ParentPA() {
   const navigate = useNavigate()
+  const { role, logout } = useAuth()
   const [regChild, setRegChild] = useState(false)
   const [updatePar, setUpdatePar] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
-  const accessToken = localStorage.getItem("accessToken")
-  // נתוני אחסון פגומים אינם מפילים את המסך, אלא מחייבים התחברות מחדש.
-  let user = null
-  try {
-    user = JSON.parse(localStorage.getItem("loggedInUser") || "null")
-  } catch {
-    localStorage.removeItem("loggedInUser")
-  }
-  const accountType = localStorage.getItem("accountType")
 
-  if (!accessToken || !user) {
-    return <Navigate to="/" replace />
-  }
-
-  const parent_Id = user._id // מזהה ההורה שנשמר ב-localStorage לאחר התחברות
-
-  // מסיר נתוני התחברות מקומיים ומחזיר את המשתמש למסך הכניסה.
   const signOut = () => {
-    localStorage.removeItem("accessToken")
-    localStorage.removeItem("loggedInUser")
-    localStorage.removeItem("accountType")
+    logout()
     navigate("/", { replace: true })
   }
 
@@ -37,22 +22,22 @@ function ParentPA() {
     <main className="page-shell">
       <section className="auth-card" dir="rtl">
         <h1>האזור האישי</h1>
-        <p>התחברת בהצלחה ({accountType}).</p>
+        <p>התחברת בהצלחה ({role}).</p>
         <p>פרטי המשתמש נטענו לאחר אימות מול השרת.</p>
         {successMessage && <p className="form-message success-message" role="status">{successMessage}</p>}
-        {!regChild && <button className="primary-button" type="button" onClick={() => { setSuccessMessage(""); setRegChild(true) }}>להרשמת ילד</button>}
-        {!updatePar && <button className="primary-button" type="button" onClick={() => {setUpdatePar(true)}}>עדכון פרטי הורה</button>}
+        <Can role="parent">
+          {!regChild && <button className="primary-button" type="button" onClick={() => { setSuccessMessage(""); setRegChild(true) }}>להרשמת ילד</button>}
+          {!updatePar && <button className="primary-button" type="button" onClick={() => {setUpdatePar(true)}}>עדכון פרטי הורה</button>}
+        </Can>
         <button className="primary-button" type="button" onClick={signOut}>יציאה</button>
         {regChild && (
           <RegChild
-            parent_Id={parent_Id}
             setRegChild={setRegChild}
             onSuccess={() => setSuccessMessage("רישום הילד הושלם בהצלחה.")}
           />
         )}
         {updatePar && 
           <UpdateParent
-            user={user}
             onCancel={() => setUpdatePar(false)}
             onSuccess={() => {
               setUpdatePar(false)

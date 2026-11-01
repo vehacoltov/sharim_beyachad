@@ -1,6 +1,7 @@
 
 import { useState } from "react"
 import { api, getErrorMessage } from "../api"
+import Can from "../Can"
 
 const AddEvent = () => {
   const [errorMessage, setErrorMessage] = useState("")
@@ -66,6 +67,7 @@ const AddEvent = () => {
   }
 
   return (
+    <Can permission="events">
     <form className="auth-card registration-card" onSubmit={handleSubmit} dir="rtl">
       <h1>יצירת אירוע</h1>
 
@@ -158,6 +160,7 @@ const AddEvent = () => {
         {isSubmitting ? "שומר..." : "יצירת אירוע"}
       </button>
     </form>
+    </Can>
   )
 };
 

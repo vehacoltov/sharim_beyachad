@@ -2,10 +2,20 @@ const Employee = require("../models/Employee")
 const Permission = require("../models/Permission")
 const verifyToken = require("./verifyToken")
 
-// בודק את הפעולה מול Permission העדכני במסד בכל בקשה, כדי ששינוי הרשאה
-// ייכנס לתוקף מיד ולא יישאר פעיל עד שפג תוקף JWT ישן.
+/**
+ * יוצרת Middleware של Authorization לפעולה אחת.
+ * לאחר אימות JWT, בודקת שהחשבון הוא עובד וטוענת בכל בקשה Permission עדכני
+ * מ-MongoDB; לכן שינוי הרשאה משפיע מיד גם על session קיים.
+ * 401 הוא כשל זיהוי, ואילו 403 פירושו שהמשתמש זוהה אך הפעולה אסורה.
+ */
 const requireAction = action => (req, res, next) => verifyToken(req, res, () => {
+    // פונקציה אסינכרונית נפרדת מאפשרת להעביר שגיאות MongoDB למנגנון השגיאות של Express.
     const authorize = async () => {
+        // הרשאות פעולה שייכות לעובדים בלבד; role שמופיע באסימון נחתם בשרת.
+        if (req.user.role !== "Employee") {
+            return res.status(403).json({ message: "אין הרשאה לבצע פעולה זו" })
+        }
+
         const employee = await Employee.findById(req.user.id).select("permission").lean()
         if (!employee?.permission) {
             return res.status(403).json({ message: "אין הרשאה לבצע פעולה זו" })
