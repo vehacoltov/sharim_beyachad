@@ -1,11 +1,13 @@
 import { useState } from "react"
 import { Navigate, useNavigate } from "react-router-dom"
 import RegChild from "../RegChild"
+import UpdateParent from "./UpdateParent"
 
 // מסך היעד לאחר התחברות; נדרשים אסימון ופרטי משתמש ששמורים בדפדפן.
 function ParentPA() {
   const navigate = useNavigate()
   const [regChild, setRegChild] = useState(false)
+  const [updatePar, setUpdatePar] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
   const accessToken = localStorage.getItem("accessToken")
   // נתוני אחסון פגומים אינם מפילים את המסך, אלא מחייבים התחברות מחדש.
@@ -39,6 +41,7 @@ function ParentPA() {
         <p>פרטי המשתמש נטענו לאחר אימות מול השרת.</p>
         {successMessage && <p className="form-message success-message" role="status">{successMessage}</p>}
         {!regChild && <button className="primary-button" type="button" onClick={() => { setSuccessMessage(""); setRegChild(true) }}>להרשמת ילד</button>}
+        {!updatePar && <button className="primary-button" type="button" onClick={() => {setUpdatePar(true)}}>עדכון פרטי הורה</button>}
         <button className="primary-button" type="button" onClick={signOut}>יציאה</button>
         {regChild && (
           <RegChild
@@ -47,6 +50,16 @@ function ParentPA() {
             onSuccess={() => setSuccessMessage("רישום הילד הושלם בהצלחה.")}
           />
         )}
+        {updatePar && 
+          <UpdateParent
+            user={user}
+            onCancel={() => setUpdatePar(false)}
+            onSuccess={() => {
+              setUpdatePar(false)
+              setSuccessMessage("פרטי ההורה עודכנו בהצלחה.")
+            }}
+          />
+        }
       </section>
     </main>
   )
