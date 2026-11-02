@@ -1,6 +1,8 @@
+import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../useAuth"
 import Can from "../Can"
+import AddEvent from "../Event/AddEvent"
 
 const actionLabels = {
   permissions: "ניהול הרשאות",
@@ -10,9 +12,10 @@ const actionLabels = {
   registation: "רישום עובדים",
 }
 
-const EmploeePA = () => {
+const EmployeePA = () => {
   const navigate = useNavigate()
   const { permissions, logout } = useAuth()
+  const [showAddEvent, setShowAddEvent] = useState(false)
   const signOut = () => {
     logout()
     navigate("/", { replace: true })
@@ -37,10 +40,22 @@ const EmploeePA = () => {
         ) : (
           <p>לא הוגדרו פעולות מורשות לחשבון.</p>
         )}
+        <Can permission="events">
+          {!showAddEvent && (
+            <button
+              className="primary-button"
+              type="button"
+              onClick={() => setShowAddEvent(true)}
+            >
+              הוסף אירוע
+            </button>
+          )}
+        </Can>
+        {showAddEvent && <AddEvent onClose={() => setShowAddEvent(false)} />}
         <button className="primary-button" type="button" onClick={signOut}>יציאה</button>
       </section>
     </main>
   );
 }
 
-export default EmploeePA
+export default EmployeePA

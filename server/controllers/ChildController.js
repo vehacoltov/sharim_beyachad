@@ -410,6 +410,22 @@ controller.create = async (req, res) => {
          */
         const child = await Child.create(fields)
 
+        if (req.user?.role === "Parent") {
+            const result = await Parent.updateOne(
+                { _id: req.user.id },
+                { $addToSet: { children: child._id } }
+            )
+            if (result.matchedCount !== 1) {
+                await Child.deleteOne({ _id: child._id })
+                if (storedImagePath) {
+                    await fileStorage.remove(storedImagePath)
+                    storedImagePath = undefined
+                }
+                return res.status(401).json({
+                    message: "חשבון ההורה אינו קיים או שאינו פעיל"
+                })
+            }
+        }
 
         /**
          * HTTP 201 - Created:

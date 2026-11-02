@@ -19,11 +19,50 @@ const editableEventFields = [
     "isActive"
 ]
 
+const toParentEvent = (event, now = new Date()) => {
+    const startReg = event.startReg ? new Date(event.startReg) : null
+    const endReg = event.endReg ? new Date(event.endReg) : null
+    const registrationOpen = Boolean(
+        event.isActive
+        && startReg
+        && endReg
+        && now >= startReg
+        && now <= endReg
+    )
+    let registrationMessage = ""
+    if (!event.isActive) {
+        registrationMessage = "ההרשמה לאירוע אינה פעילה."
+    } else if (!startReg || !endReg) {
+        registrationMessage = "מועדי ההרשמה לאירוע אינם זמינים."
+    } else if (now < startReg) {
+        registrationMessage = "ההרשמה לאירוע טרם נפתחה."
+    } else if (now > endReg) {
+        registrationMessage = "ההרשמה לאירוע הסתיימה."
+    }
+
+    return {
+        _id: event._id,
+        name: event.name,
+        date: event.date,
+        hour: event.hour,
+        detailingForParent: event.detailingForParent,
+        registrationOpen,
+        registrationMessage
+    }
+}
+
 // מגדיר פעולה אסינכרונית שמטפלת בבקשה לקבלת כל האירועים.
 const getAllEvents = async (req, res) => {
     // מתחיל אזור שבו שגיאות ממסד הנתונים ייתפסו ולא יפילו את השרת.
     try {
         // שולף את כל המסמכים מאוסף האירועים; await ממתין לתשובת MongoDB.
+        if (req.user?.role === "Parent") {
+            const events = await Event.find()
+                .select("_id name date hour detailingForParent isActive startReg endReg")
+                .lean()
+            return res.json(events.map(event => toParentEvent(event)))
+        }
+
         const events = await Event.find()
         // מחזיר ללקוח את רשימת האירועים בפורמט JSON.
         return res.json(events)
@@ -33,7 +72,6 @@ const getAllEvents = async (req, res) => {
         return res.status(500).json({ message: "Failed to fetch events" })
     // מסיים את פעולת קבלת כל האירועים.
     }
-// מסיים את ההגדרה של getAllEvents.
 }
 
 // מגדיר פעולה אסינכרונית לקבלת אירוע יחיד לפי מזהה שבכתובת.
@@ -50,7 +88,11 @@ const getById = async (req, res) => {
     // מתחיל טיפול בשליפה, כולל אפשרות לכשל במסד הנתונים.
     try {
         // מחפש אירוע לפי מזהה MongoDB הפנימי שלו.
-        const event = await Event.findById(id)
+        const eventQuery = Event.findById(id)
+        if (req.user?.role === "Parent") {
+            eventQuery.select("_id name date hour detailingForParent isActive startReg endReg")
+        }
+        const event = await eventQuery
         // בודק אם השאילתה הצליחה אך לא נמצא אירוע כזה.
         if (!event) {
             // מחזיר 404 ומפסיק, כדי לא לנסות להחזיר ערך חסר.
@@ -58,7 +100,7 @@ const getById = async (req, res) => {
         // מסיים את בדיקת קיום האירוע.
         }
         // מחזיר את האירוע שנמצא ללקוח כ־JSON.
-        return res.json(event)
+        return res.json(req.user?.role === "Parent" ? toParentEvent(event) : event)
     // מטפל בשגיאות בלתי צפויות במהלך השליפה.
     } catch (error) {
         // מחזיר שגיאת שרת כללית במקום לחשוף פרטים פנימיים ללקוח.
@@ -72,7 +114,7 @@ const getById = async (req, res) => {
 const createEvent = async (req, res) => {
     // לוקח רק שדות שמוגדרים במודל; אם גוף הבקשה חסר, משתמש באובייקט ריק.
     const {
-        name, id, Children, Volunteers, date, startReg, endReg, hour,
+        name, Children, Volunteers, date, startReg, endReg, hour,
         detailingForParent, detailingForVolun, sumOfChilds, SavedPlaces, isActive
     } = req.body ?? {}
 
@@ -81,7 +123,6 @@ const createEvent = async (req, res) => {
         // יוצר מסמך חדש רק מהשדות המפורשים, ו־Mongoose בודק את כללי המודל.
         const event = await Event.create({
             name,
-            id,
             Children,
             Volunteers,
             date,
@@ -98,10 +139,37 @@ const createEvent = async (req, res) => {
         return res.status(201).json(event)
     // תופס שגיאות ולידציה ושגיאות אחרות מתהליך היצירה.
     } catch (error) {
-        // שגיאת ולידציה נחשבת קלט לא תקין (400); שגיאה אחרת היא שגיאת שרת (500).
-        const status = error.name === "ValidationError" ? 400 : 500
-        // מחזיר את קוד השגיאה ואת הודעת הכשל ביצירה.
-        return res.status(status).json({ message: "Failed to create event" })
+        if (error.name === "ValidationError") {
+            const details = Object.fromEntries(
+                Object.entries(error.errors).map(([field, issue]) => [field, issue.message])
+            )
+            return res.status(400).json({
+                message: "נתוני האירוע אינם תקינים",
+                fields: Object.keys(details),
+                details
+            })
+        }
+
+        if (error.name === "CastError") {
+            return res.status(400).json({
+                message: "נתוני האירוע אינם תקינים",
+                fields: [error.path],
+                details: { [error.path]: error.message }
+            })
+        }
+
+        if (error.code === 11000) {
+            const duplicateField = Object.keys(error.keyPattern || {})[0]
+                || Object.keys(error.keyValue || {})[0]
+            return res.status(409).json({
+                message: duplicateField
+                    ? `כבר קיים אירוע עם ערך זה בשדה ${duplicateField}`
+                    : "אירוע עם ערך ייחודי זה כבר קיים"
+            })
+        }
+
+        console.error("Failed to create event:", error)
+        return res.status(500).json({ message: "יצירת האירוע נכשלה" })
     // מסיים את הטיפול בשגיאות היצירה.
     }
 // מסיים את ההגדרה של createEvent.
@@ -211,4 +279,10 @@ const deleteEvent = async (req, res) => {
 }
 
 // מייצא את פעולות ה־controller כדי שה־route יוכל לשייך אותן לכתובות HTTP.
-module.exports = { getAllEvents, getById, createEvent, update, deleteEvent }
+module.exports = {
+    getAllEvents,
+    getById,
+    createEvent,
+    update,
+    deleteEvent
+}

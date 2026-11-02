@@ -6,7 +6,7 @@
 import RegistrationForm from "../Registration/RegistrationForm"
 import { useAuth } from "../useAuth"
 
-const fields = [
+export const childFields = [
   {
     name: "fullName",
     label: "שם מלא",
@@ -76,7 +76,7 @@ const fields = [
 function RegChild({ setRegChild, onSuccess }) {
   const { user, role } = useAuth()
   const loggedInParentId = role === "parent" ? user?._id : undefined
-  const visibleFields = fields.filter((field) =>
+  const visibleFields = childFields.filter((field) =>
     !["status", "category", "notes"].includes(field.name) || role === "employee"
   )
 

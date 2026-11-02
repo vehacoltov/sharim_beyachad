@@ -1,5 +1,5 @@
 import ParentPA from "./Parent/ParentPA"
-import EmploeePA from "./Employee/EmploeePA"
+import EmployeePA from "./Employee/EmployeePA"
 import VolunteerPA from "./Volunteer/VolunteerPA"
 import { useAuth } from "./useAuth"
 
@@ -12,7 +12,7 @@ function PersonalArea() {
   }
 
   if (role === "employee") {
-    return <EmploeePA />
+    return <EmployeePA />
   }
 
   if (role === "volunteer") {

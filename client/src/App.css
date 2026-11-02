@@ -24,6 +24,31 @@
   margin: 24px 0;
 }
 
+.parent-events {
+  display: grid;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.parent-events h2,
+.parent-event-card h3 {
+  margin: 0;
+  color: #17324d;
+}
+
+.parent-event-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid #d9e3ed;
+  border-radius: 12px;
+  background: #f8fbfd;
+}
+
+.parent-event-card p {
+  margin: 0;
+}
+
 .auth-card h1,
 .dialog-card h2 {
   margin: 0;

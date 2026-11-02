@@ -1,5 +1,4 @@
 const mongoose = require('mongoose')
-const Child = require('./Child')
 const childInEventSchema = mongoose.Schema({
     child: {
         type: mongoose.Schema.Types.ObjectId,
@@ -8,6 +7,10 @@ const childInEventSchema = mongoose.Schema({
     volunteer: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'VolunteerInEvent'
+    },
+    favoriteVolun: {
+        type: String,
+        trim: true
     }
 }, {
     timestamps: true

@@ -4,5 +4,5 @@ const ChildEvent = require("../models/ChildEvent")
 // מגדיר CRUD עבור קישור בין ילד למתנדב באירוע.
 module.exports = createModelController({
     model: ChildEvent,
-    editableFields: ["child", "volunteer"]
+    editableFields: ["child", "volunteer", "favoriteVolun"]
 })

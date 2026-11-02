@@ -15,4 +15,3 @@ router.route('/:id')
     .get(requireRoleOrAction(["Parent", "Volunteer"], "events"), eventController.getById)
 
 module.exports = router
-
