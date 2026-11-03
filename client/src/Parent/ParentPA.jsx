@@ -14,6 +14,7 @@ function ParentPA() {
   const [regChild, setRegChild] = useState(false)
   const [updatePar, setUpdatePar] = useState(false)
   const [childToUpdate, setChildToUpdate] = useState(null)
+  const [presentEvents, setPresentEvents] = useState(false)
   const [childrenForSelection, setChildrenForSelection] = useState([])
   const [showChildSelection, setShowChildSelection] = useState(false)
   const [isLoadingChildren, setIsLoadingChildren] = useState(false)
@@ -46,7 +47,13 @@ function ParentPA() {
     navigate("/", { replace: true })
   }
 
-  const openChildUpdate = async () => {
+  const toggleChildUpdate = async () => {
+    if (childToUpdate || showChildSelection) {
+      setChildToUpdate(null)
+      setShowChildSelection(false)
+      return
+    }
+
     setSuccessMessage("")
     setEventsError("")
     setIsLoadingChildren(true)
@@ -75,18 +82,18 @@ function ParentPA() {
         <p>פרטי המשתמש נטענו לאחר אימות מול השרת.</p>
         {successMessage && <p className="form-message success-message" role="status">{successMessage}</p>}
         <Can role="parent">
-          {!regChild && <button className="primary-button" type="button" onClick={() => { setSuccessMessage(""); setRegChild(true) }}>להרשמת ילד</button>}
-          {!updatePar && <button className="primary-button" type="button" onClick={() => {setUpdatePar(true)}}>עדכון פרטי הורה</button>}
-          {!childToUpdate && !showChildSelection && (
-            <button
-              className="primary-button"
-              type="button"
-              onClick={openChildUpdate}
-              disabled={isLoadingChildren}
-            >
-              {isLoadingChildren ? "טוען ילדים..." : "עדכון פרטי ילד"}
-            </button>
-          )}
+          <button className="primary-button" type="button" onClick={() => { setSuccessMessage(""); setRegChild(!regChild) }}>להרשמת ילד</button>
+          <button className="primary-button" type="button" onClick={() => { setUpdatePar(!updatePar) }}>עדכון פרטי הורה</button>
+          <button className="primary-button" id="parent-events-heading" onClick={() => setPresentEvents(!presentEvents)}>אירועים</button>
+
+          <button
+            className="primary-button"
+            type="button"
+            onClick={toggleChildUpdate}
+            disabled={isLoadingChildren}
+          >
+            {isLoadingChildren ? "טוען ילדים..." : "עדכון פרטי ילד"}
+          </button>
         </Can>
         <button className="primary-button" type="button" onClick={signOut}>יציאה</button>
         {regChild && (
@@ -97,7 +104,7 @@ function ParentPA() {
             }}
           />
         )}
-        {updatePar && 
+        {updatePar &&
           <UpdateParent
             onCancel={() => setUpdatePar(false)}
             onSuccess={() => {
@@ -154,31 +161,31 @@ function ParentPA() {
             </section>
           </div>
         )}
-        <section className="parent-events" aria-labelledby="parent-events-heading">
-          <h2 id="parent-events-heading">אירועים</h2>
-          {eventsLoading && <p role="status">טוען אירועים...</p>}
-          {eventsError && <p className="form-message error-message" role="alert">{eventsError}</p>}
-          {!eventsLoading && !eventsError && events.length === 0 && (
-            <p>אין אירועים להצגה כרגע.</p>
-          )}
-          {events.map((event) => {
-            return (
-              <article className="parent-event-card" key={event._id}>
-                <h3>{event.name}</h3>
-                <p><strong>תאריך:</strong> {new Date(event.date).toLocaleDateString("he-IL")}</p>
-                <p><strong>שעה:</strong> {event.hour}</p>
-                <p><strong>פרטים להורים:</strong> {event.detailingForParent}</p>
-                {event.registrationOpen ? (
-                  <button className="primary-button" type="button" disabled>
-                    הרשמה
-                  </button>
-                ) : (
-                  <p>{event.registrationMessage}</p>
-                )}
-              </article>
-            )
-          })}
-        </section>
+        {presentEvents &&
+          <section className="parent-events" aria-labelledby="parent-events-heading">
+            {eventsLoading && <p role="status">טוען אירועים...</p>}
+            {eventsError && <p className="form-message error-message" role="alert">{eventsError}</p>}
+            {!eventsLoading && !eventsError && events.length === 0 && (
+              <p>אין אירועים להצגה כרגע.</p>
+            )}
+            {events.map((event) => {
+              return (
+                <article className="parent-event-card" key={event._id}>
+                  <h3>{event.name}</h3>
+                  <p><strong>תאריך:</strong> {new Date(event.date).toLocaleDateString("he-IL")}</p>
+                  <p><strong>שעה:</strong> {event.hour}</p>
+                  <p><strong>פרטים להורים:</strong> {event.detailingForParent}</p>
+                  {event.registrationOpen ? (
+                    <button className="primary-button" type="button" disabled>
+                      הרשמה
+                    </button>
+                  ) : (
+                    <p>{event.registrationMessage}</p>
+                  )}
+                </article>
+              )
+            })}
+          </section>}
       </section>
     </main>
   )
