@@ -5,6 +5,7 @@ import UpdateParent from "./UpdateParent"
 import UpdateChild from "./UpdateChild"
 import { useAuth } from "../useAuth"
 import Can from "../Can"
+import AllEvents from "../Event/AllEvents"
 import { api, getErrorMessage } from "../api"
 
 // האזור קורא את זהות ההורה מה-Context במקום לפרש נתונים מקומיים מהדפדפן.
@@ -17,24 +18,26 @@ function ParentPA() {
   const [presentEvents, setPresentEvents] = useState(false)
   const [childrenForSelection, setChildrenForSelection] = useState([])
   const [showChildSelection, setShowChildSelection] = useState(false)
-  const [isLoadingChildren, setIsLoadingChildren] = useState(false)
+  const [isLoadingChildren, setIsLoadingChildren] = useState(true)
   const [successMessage, setSuccessMessage] = useState("")
-  const [events, setEvents] = useState([])
-  const [eventsLoading, setEventsLoading] = useState(true)
-  const [eventsError, setEventsError] = useState("")
+  const [childrenError, setChildrenError] = useState("")
 
   useEffect(() => {
     let active = true
-    api.get("/event")
-      .then((eventsResponse) => {
+
+    api.get("/child")
+      .then(({ data }) => {
         if (!active) return
-        setEvents(eventsResponse.data)
+        setChildrenForSelection(data)
+        if (data.length === 0) {
+          setChildrenError("לא נמצאו ילדים המשויכים לחשבון ההורה.")
+        }
       })
       .catch((error) => {
-        if (active) setEventsError(getErrorMessage(error))
+        if (active) setChildrenError(getErrorMessage(error))
       })
       .finally(() => {
-        if (active) setEventsLoading(false)
+        if (active) setIsLoadingChildren(false)
       })
 
     return () => {
@@ -47,7 +50,7 @@ function ParentPA() {
     navigate("/", { replace: true })
   }
 
-  const toggleChildUpdate = async () => {
+  const toggleChildUpdate = () => {
     if (childToUpdate || showChildSelection) {
       setChildToUpdate(null)
       setShowChildSelection(false)
@@ -55,22 +58,13 @@ function ParentPA() {
     }
 
     setSuccessMessage("")
-    setEventsError("")
-    setIsLoadingChildren(true)
-    try {
-      const { data } = await api.get("/child")
-      setChildrenForSelection(data)
-      if (data.length === 0) {
-        setEventsError("לא נמצאו ילדים המשויכים לחשבון ההורה.")
-      } else if (data.length === 1) {
-        setChildToUpdate(data[0])
-      } else {
-        setShowChildSelection(true)
-      }
-    } catch (error) {
-      setEventsError(getErrorMessage(error))
-    } finally {
-      setIsLoadingChildren(false)
+    if (childrenError) return
+    if (childrenForSelection.length === 0) {
+      setChildrenError("לא נמצאו ילדים המשויכים לחשבון ההורה.")
+    } else if (childrenForSelection.length === 1) {
+      setChildToUpdate(childrenForSelection[0])
+    } else {
+      setShowChildSelection(true)
     }
   }
 
@@ -84,7 +78,14 @@ function ParentPA() {
         <Can role="parent">
           <button className="primary-button" type="button" onClick={() => { setSuccessMessage(""); setRegChild(!regChild) }}>להרשמת ילד</button>
           <button className="primary-button" type="button" onClick={() => { setUpdatePar(!updatePar) }}>עדכון פרטי הורה</button>
-          <button className="primary-button" id="parent-events-heading" onClick={() => setPresentEvents(!presentEvents)}>אירועים</button>
+          <button
+            className="primary-button"
+            type="button"
+            aria-expanded={presentEvents}
+            onClick={() => setPresentEvents(!presentEvents)}
+          >
+            אירועים
+          </button>
 
           <button
             className="primary-button"
@@ -94,6 +95,7 @@ function ParentPA() {
           >
             {isLoadingChildren ? "טוען ילדים..." : "עדכון פרטי ילד"}
           </button>
+          {childrenError && <p className="form-message error-message" role="alert">{childrenError}</p>}
         </Can>
         <button className="primary-button" type="button" onClick={signOut}>יציאה</button>
         {regChild && (
@@ -161,31 +163,22 @@ function ParentPA() {
             </section>
           </div>
         )}
-        {presentEvents &&
-          <section className="parent-events" aria-labelledby="parent-events-heading">
-            {eventsLoading && <p role="status">טוען אירועים...</p>}
-            {eventsError && <p className="form-message error-message" role="alert">{eventsError}</p>}
-            {!eventsLoading && !eventsError && events.length === 0 && (
-              <p>אין אירועים להצגה כרגע.</p>
-            )}
-            {events.map((event) => {
-              return (
-                <article className="parent-event-card" key={event._id}>
-                  <h3>{event.name}</h3>
-                  <p><strong>תאריך:</strong> {new Date(event.date).toLocaleDateString("he-IL")}</p>
-                  <p><strong>שעה:</strong> {event.hour}</p>
-                  <p><strong>פרטים להורים:</strong> {event.detailingForParent}</p>
-                  {event.registrationOpen ? (
-                    <button className="primary-button" type="button" disabled>
-                      הרשמה
-                    </button>
-                  ) : (
-                    <p>{event.registrationMessage}</p>
-                  )}
-                </article>
-              )
-            })}
-          </section>}
+        {presentEvents && (
+          <AllEvents
+            childrenForRegistration={childrenForSelection}
+            childrenLoading={isLoadingChildren}
+            childrenError={childrenError}
+            onChildUpdated={(updatedChild) => {
+              setChildrenForSelection((current) => current.map((child) =>
+                child._id === updatedChild._id ? updatedChild : child
+              ))
+            }}
+            onRegistrationSuccess={(childName, eventName) => {
+              setSuccessMessage(`ההרשמה של ${childName} לאירוע "${eventName}" הושלמה בהצלחה.`)
+            }}
+          />
+        )}
+
       </section>
     </main>
   )

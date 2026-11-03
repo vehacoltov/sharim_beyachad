@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { useAuth } from "../useAuth"
 import Can from "../Can"
 import AddEvent from "../Event/AddEvent"
+import AllEvents from "../Event/AllEvents"
 
 const actionLabels = {
   permissions: "ניהול הרשאות",
@@ -16,6 +17,7 @@ const EmployeePA = () => {
   const navigate = useNavigate()
   const { permissions, logout } = useAuth()
   const [showAddEvent, setShowAddEvent] = useState(false)
+  const[showAllEvents,setShowAllEvents]=useState(false)
   const signOut = () => {
     logout()
     navigate("/", { replace: true })
@@ -45,13 +47,26 @@ const EmployeePA = () => {
             <button
               className="primary-button"
               type="button"
-              onClick={() => setShowAddEvent(true)}
+              onClick={() => setShowAddEvent(!showAddEvent)}
             >
               הוסף אירוע
             </button>
           )}
+
+           
+            <button
+              className="primary-button"
+              type="button"
+              onClick={() => setShowAllEvents(!showAllEvents)}
+            >
+              כל האירועים
+            </button>
+          
+
         </Can>
         {showAddEvent && <AddEvent onClose={() => setShowAddEvent(false)} />}
+          {showAllEvents && <AllEvents />} 
+          {/* onClose={() => setShowAllEvents(false)} />} */}
         <button className="primary-button" type="button" onClick={signOut}>יציאה</button>
       </section>
     </main>

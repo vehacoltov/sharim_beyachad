@@ -234,10 +234,16 @@ Many Requests`, כוללת `retryAfterSeconds` ומגדירה כותרת `Retry-
 | `Employee` | `fullName`, `id`, `phone`, `userName`, `password`, `permission` (ObjectId reference), `workingTime`, `currentWorkingTime` |
 | `Volunteer` | `fullName`, `password`, `email`, `id`, `phone`, `age`, `seminar`, `detaling` |
 | `Child` | `fullName`, `parent`, `id`, `phone`, `anothwrPhone`, `age`, `epilepsy`, `sensitivity`, `medicines`, `canBeFilemed`, `detailing`, `notes`, `img`, `status`, `category` |
-| `ChildEvent` | `child`, `volunteer` |
+| `ChildEvent` | `child`, `event` (reference to `Event`), `volunteer`, `favoriteVolun` |
 | `VolunteerEvent` | `child`, `volunteer`, `notes`, `favouredChild` |
 | `Event` | `name`, `id`, `Children`, `sumOfChilds`, `SavedPlaces`, `isActive`, `Volunteers`, `date`, `startReg`, `endReg`, `hour`, `detailingForParent`, `detailingForVolun` |
 | `Permission` | `id`, `name` (hash), `nameLookup` (HMAC), `password` (hash), `validActions` (string array) |
+
+`POST /child-event` also accepts parent accounts for event registration. The
+request body contains `child`, `event`, and optional `favoriteVolun`; a parent
+can register only a child belonging to their account. Registration is accepted
+only while the event is active, within its registration dates, and while places
+remain. The created `ChildEvent` reference is added to `Event.Children`.
 | `Counter` | `_id` — שם המונה; `seq` — המספר האחרון שהוקצה |
 
 במודל `Parent` השדה `id` הוא מזהה חיצוני ייחודי ומחרוזתי ומשמש להתחברות;
