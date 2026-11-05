@@ -6,7 +6,7 @@ const parentEditableFields = childFields.filter(
   (field) => !["status", "category", "notes", "img"].includes(field.name)
 )
 
-const UpdateChild = ({ child, onCancel, onSuccess }) => {
+const UpdateChild = ({ child, onCancel, onSuccess, read, setToEdit }) => {
   const [values, setValues] = useState(() =>
     Object.fromEntries(parentEditableFields.map((field) => {
       const value = child[field.name]
@@ -18,6 +18,8 @@ const UpdateChild = ({ child, onCancel, onSuccess }) => {
   const [fieldErrors, setFieldErrors] = useState({})
   const [errorMessage, setErrorMessage] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // const [toRead, setToRead] = useState(read ? true : false)
+  const toRead = read ? true : false
 
   const validateField = (field, value) => {
     const textValue = String(value ?? "")
@@ -73,14 +75,26 @@ const UpdateChild = ({ child, onCancel, onSuccess }) => {
     }
   }
 
+  const updateClick = (event) => {
+    event.preventDefault()
+    setToEdit(true)
+  }
+
+  const confirmClick = (event) => {
+    event.preventDefault()
+    onSuccess?.(child)
+  }
+
   return (
+
     <form className="auth-card registration-card" onSubmit={handleSubmit} dir="rtl">
-      <h2>עדכון פרטי {child.fullName}</h2>
+
+      <h2>{read ? "פרטי ילד" : "עדכון פרטי ילד"} </h2>
       {parentEditableFields.map((field) => (
         <div className="form-field" key={field.name}>
           <label htmlFor={`update-child-${field.name}`}>{field.label}</label>
           {field.type === "boolean" ? (
-            <input
+            <input disabled={toRead}
               id={`update-child-${field.name}`}
               name={field.name}
               type="checkbox"
@@ -91,7 +105,7 @@ const UpdateChild = ({ child, onCancel, onSuccess }) => {
               }))}
             />
           ) : field.type === "select" ? (
-            <select
+            <select disabled={toRead}
               id={`update-child-${field.name}`}
               name={field.name}
               value={values[field.name]}
@@ -102,11 +116,12 @@ const UpdateChild = ({ child, onCancel, onSuccess }) => {
             >
               <option value="">בחרו {field.label}</option>
               {field.options.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
+                <option disabled={toRead} key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
           ) : (
             <input
+              disabled={toRead}
               id={`update-child-${field.name}`}
               name={field.name}
               type={field.type === "array" ? "text" : field.type}
@@ -154,9 +169,13 @@ const UpdateChild = ({ child, onCancel, onSuccess }) => {
         </div>
       ))}
       {errorMessage && <p className="form-message error-message" role="alert">{errorMessage}</p>}
-      <button className="primary-button" type="submit" disabled={isSubmitting}>
-        {isSubmitting ? "שומר..." : "שמירת פרטי הילד"}
-      </button>
+      {!toRead &&
+        <button className="primary-button" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "שומר..." : "שמירת פרטי הילד"}
+        </button>}
+      {toRead && <>
+        <button className="primary-button" type="button" onClick={confirmClick}>אישור</button>
+        <button onClick={updateClick} className="primary-button" type="button">עדכון פרטי הילד</button></>}
       <button className="secondary-button" type="button" onClick={onCancel} disabled={isSubmitting}>
         ביטול
       </button>

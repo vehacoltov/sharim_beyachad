@@ -28,14 +28,11 @@ const FormChildReg = ({ child, event, onSuccess }) => {
     return (
         <form className="auth-card registration-card" onSubmit={handleSubmit} dir="rtl">
             <h2>הרשמה לאירוע</h2>
-            <div className="form-field">
-                <label htmlFor="registration-child-name">שם הילד</label>
-                <input id="registration-child-name" type="text" value={child.fullName} readOnly />
-            </div>
-            <div className="form-field">
-                <label htmlFor="registration-event-name">שם האירוע</label>
-                <input id="registration-event-name" type="text" value={event.name} readOnly />
-            </div>
+            <p><strong>שם הילד:</strong> {child.fullName}</p>
+            <p><strong>שם האירוע:</strong> {event.name}</p>
+            <p><strong>תאריך:</strong> {new Date(event.date).toLocaleDateString("he-IL")}</p>
+            <p><strong>שעה:</strong> {event.hour}</p>
+            <p><strong>פרטים להורים:</strong> {event.detailingForParent}</p>
             <div className="form-field">
                 <label htmlFor="registration-favorite-volunteer">האם יש מתנדבת שתעדיפו?</label>
                 <input

@@ -11,6 +11,7 @@ const RegChildToEvent = ({
 }) => {
     const [child, setChild] = useState(childrenForRegistration[0] ?? null)
     const [detailsIsUpdated, setDetailsIsUpdated] = useState(false)
+    const [toEdit, setToEdit] = useState(false)
     const handleSuccess = (updatedChild) => {
         onChildUpdated?.(updatedChild)
         setChild(updatedChild)
@@ -36,7 +37,7 @@ const RegChildToEvent = ({
             </>
         }
 
-        {detailsIsUpdated ? (
+        {detailsIsUpdated &&
             <FormChildReg
                 child={child}
                 event={event}
@@ -45,16 +46,27 @@ const RegChildToEvent = ({
                     onCancel()
                 }}
             />
-        ) : (
-            child && (
-                <UpdateChild
-                    key={child._id}
-                    child={child}
-                    onCancel={onCancel}
-                    onSuccess={handleSuccess}
-                />
-            )
-        )}
+        }
+
+        {child && !toEdit &&
+            <UpdateChild
+                key={child._id}
+                child={child}
+                onCancel={onCancel}
+                onSuccess={handleSuccess}
+                read={true}
+                setToEdit={setToEdit}
+            />
+        }
+
+        {child && toEdit &&
+          <UpdateChild
+                key={child._id}
+                child={child}
+                onCancel={onCancel}
+                onSuccess={handleSuccess}
+            />
+        }
     </>
 }
 
