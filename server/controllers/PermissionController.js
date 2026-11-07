@@ -7,7 +7,7 @@ const { hashPassword, isValidPassword } = require("../utils/password")
 const { findEmployeePermission } = require("../utils/employeePermission")
 const { getLoginLock, recordLoginFailure, clearLoginFailures } = require("../utils/loginRateLimiter")
 
-const VALID_ACTIONS = ["permissions", "employees", "events", "matching", "registation"]
+const VALID_ACTIONS = ["permissions", "employees", "events", "matching", "registation", "payments"]
 
 // bcrypt מייצר hash שונה בכל פעם בזכות salt אקראי, ולכן אין דרך לחפש לפי hash
 // של שם ידוע מראש או להשוות בין שני hash-ים כדי לבדוק אם השמות זהים.

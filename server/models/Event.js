@@ -57,6 +57,12 @@ const eventSchema = mongoose.Schema({
         required:true,
         match: /^([01]\d|2[0-3]):[0-5]\d$/
     },
+    price: {
+        type: Number,
+        required: true,
+        min: 0,
+        default: 0
+    },
     detailingForParent: {
         type: String,
         trim:true,

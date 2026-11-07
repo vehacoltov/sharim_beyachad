@@ -26,6 +26,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")))
 
 
 app.use("/event", require("./routes/eventRoute"))
+app.use("/payment", require("./routes/paymentRoute"))
 app.use("/auth", require("./routes/authRoute"))
 app.use("/child", require("./routes/childRoute"))
 app.use("/child-event", require("./routes/childEventRoute"))

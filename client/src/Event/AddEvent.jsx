@@ -15,6 +15,7 @@ const AddEvent = ({ onClose }) => {
     startReg: "יש להזין מועד פתיחה תקין, שקודם למועד סיום ההרשמה.",
     endReg: "יש להזין מועד סיום תקין, המאוחר ממועד פתיחת ההרשמה.",
     hour: "יש להזין שעה תקינה.",
+    price: "יש להזין מחיר שאינו שלילי.",
     sumOfChilds: "מספר הילדים חייב להיות מספר שלם וחיובי.",
     SavedPlaces: "מספר המקומות השמורים חייב להיות מספר שלם ולא שלילי, וקטן ממספר הילדים.",
     isActive: "יש לבחור אם האירוע פעיל או לא פעיל.",
@@ -28,6 +29,7 @@ const AddEvent = ({ onClose }) => {
     startReg: "יש להזין מועד פתיחת הרשמה.",
     endReg: "יש להזין מועד סיום הרשמה.",
     hour: "יש להזין שעה.",
+    price: "יש להזין מחיר לאירוע.",
     sumOfChilds: "יש להזין את מספר הילדים.",
     SavedPlaces: "יש להזין את מספר המקומות השמורים.",
     isActive: "יש לבחור סטטוס לאירוע.",
@@ -140,6 +142,7 @@ const AddEvent = ({ onClose }) => {
       startReg,
       endReg,
       hour: formData.get("hour"),
+      price: Number(formData.get("price")),
       sumOfChilds,
       SavedPlaces: savedPlaces,
       isActive: formData.get("isActive") === "true",
@@ -227,6 +230,12 @@ const AddEvent = ({ onClose }) => {
         <label htmlFor="event-hour">שעה</label>
         <input id="event-hour" name="hour" type="time" required {...fieldProps("hour")} />
         {fieldError("hour")}
+      </div>
+
+      <div className="form-field">
+        <label htmlFor="event-price">מחיר (₪)</label>
+        <input id="event-price" name="price" type="number" min="0" step="0.01" required {...fieldProps("price")} />
+        {fieldError("price")}
       </div>
 
       <div className="form-field">

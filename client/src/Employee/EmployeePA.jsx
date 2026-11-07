@@ -11,6 +11,7 @@ const actionLabels = {
   events: "ניהול אירועים",
   matching: "שידוך ילדים ומתנדבים",
   registation: "רישום עובדים",
+  payments: "ניהול תשלומים",
 }
 
 const EmployeePA = () => {

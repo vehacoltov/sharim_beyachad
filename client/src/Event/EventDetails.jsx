@@ -22,6 +22,7 @@ const EventDetails = ({
             <h3>{event.name}</h3>
             <p><strong>תאריך:</strong> {new Date(event.date).toLocaleDateString("he-IL")}</p>
             <p><strong>שעה:</strong> {event.hour}</p>
+            <p><strong>מחיר:</strong> {Number(event.price ?? 0).toLocaleString("he-IL", { style: "currency", currency: "ILS" })}</p>
             {role === "parent" && (
                 <p><strong>פרטים להורים:</strong> {event.detailingForParent}</p>
             )}

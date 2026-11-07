@@ -10,7 +10,7 @@ const PERMISSION_DEFINITIONS = [
         name: "admin",
         passwordEnv: "ADMIN_PERMISSION_PASSWORD",
         legacyPasswordEnv: "INITIAL_ADMIN_PASSWORD",
-        validActions: ["permissions", "employees", "events", "matching", "registation"]
+        validActions: ["permissions", "employees", "events", "matching", "registation", "payments"]
     },
     {
         name: "basic-",

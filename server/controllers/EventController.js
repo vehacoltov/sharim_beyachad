@@ -12,6 +12,7 @@ const editableEventFields = [
     "startReg",
     "endReg",
     "hour",
+    "price",
     "detailingForParent",
     "detailingForVolun",
     "sumOfChilds",
@@ -45,6 +46,7 @@ const toParentEvent = (event, now = new Date()) => {
         name: event.name,
         date: event.date,
         hour: event.hour,
+        price: event.price ?? 0,
         detailingForParent: event.detailingForParent,
         registrationOpen,
         registrationMessage
@@ -58,7 +60,7 @@ const getAllEvents = async (req, res) => {
         // שולף את כל המסמכים מאוסף האירועים; await ממתין לתשובת MongoDB.
         if (req.user?.role === "Parent") {
             const events = await Event.find()
-                .select("_id name date hour detailingForParent isActive startReg endReg")
+                .select("_id name date hour price detailingForParent isActive startReg endReg")
                 .lean()
             return res.json(events.map(event => toParentEvent(event)))
         }
@@ -90,7 +92,7 @@ const getById = async (req, res) => {
         // מחפש אירוע לפי מזהה MongoDB הפנימי שלו.
         const eventQuery = Event.findById(id)
         if (req.user?.role === "Parent") {
-            eventQuery.select("_id name date hour detailingForParent isActive startReg endReg")
+            eventQuery.select("_id name date hour price detailingForParent isActive startReg endReg")
         }
         const event = await eventQuery
         // בודק אם השאילתה הצליחה אך לא נמצא אירוע כזה.
@@ -115,7 +117,7 @@ const createEvent = async (req, res) => {
     // לוקח רק שדות שמוגדרים במודל; אם גוף הבקשה חסר, משתמש באובייקט ריק.
     const {
         name, Children, Volunteers, date, startReg, endReg, hour,
-        detailingForParent, detailingForVolun, sumOfChilds, SavedPlaces, isActive
+        price, detailingForParent, detailingForVolun, sumOfChilds, SavedPlaces, isActive
     } = req.body ?? {}
 
     // מתחיל ניסיון ליצור את האירוע במסד הנתונים.
@@ -129,6 +131,7 @@ const createEvent = async (req, res) => {
             startReg,
             endReg,
             hour,
+            price,
             detailingForParent,
             detailingForVolun,
             sumOfChilds,
