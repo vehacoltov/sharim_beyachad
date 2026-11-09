@@ -1,14 +1,14 @@
-import ParentPA from "./Parent/ParentPA"
 import EmployeePA from "./Employee/EmployeePA"
 import VolunteerPA from "./Volunteer/VolunteerPA"
 import { useAuth } from "./useAuth"
+import { Outlet } from "react-router-dom"
 
 // מחלק את האזור האישי לפי סוג החשבון שהשרת אימת וה-Context טען.
 function PersonalArea() {
   const { role } = useAuth()
 
   if (role === "parent") {
-    return <ParentPA />
+    return <Outlet />
   }
 
   if (role === "employee") {

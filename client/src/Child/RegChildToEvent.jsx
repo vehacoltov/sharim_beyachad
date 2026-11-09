@@ -43,7 +43,6 @@ const RegChildToEvent = ({
                 event={event}
                 onSuccess={() => {
                     onRegistrationSuccess?.(child.fullName, event.name)
-                    onCancel()
                 }}
             />
         }

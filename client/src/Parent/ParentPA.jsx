@@ -1,21 +1,14 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
-import RegChild from "./RegChild"
-import UpdateParent from "./UpdateParent"
-import UpdateChild from "./UpdateChild"
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "../useAuth"
 import Can from "../Can"
-import AllEvents from "../Event/AllEvents"
 import { api, getErrorMessage } from "../api"
 
 // האזור קורא את זהות ההורה מה-Context במקום לפרש נתונים מקומיים מהדפדפן.
 function ParentPA() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { role, logout } = useAuth()
-  const [regChild, setRegChild] = useState(false)
-  const [updatePar, setUpdatePar] = useState(false)
-  const [childToUpdate, setChildToUpdate] = useState(null)
-  const [presentEvents, setPresentEvents] = useState(false)
   const [childrenForSelection, setChildrenForSelection] = useState([])
   const [showChildSelection, setShowChildSelection] = useState(false)
   const [isLoadingChildren, setIsLoadingChildren] = useState(true)
@@ -29,9 +22,7 @@ function ParentPA() {
       .then(({ data }) => {
         if (!active) return
         setChildrenForSelection(data)
-        if (data.length === 0) {
-          setChildrenError("לא נמצאו ילדים המשויכים לחשבון ההורה.")
-        }
+        setChildrenError(data.length === 0 ? "לא נמצאו ילדים המשויכים לחשבון ההורה." : "")
       })
       .catch((error) => {
         if (active) setChildrenError(getErrorMessage(error))
@@ -43,7 +34,7 @@ function ParentPA() {
     return () => {
       active = false
     }
-  }, [])
+  }, [location.state?.refreshChildren])
 
   const signOut = () => {
     logout()
@@ -51,8 +42,7 @@ function ParentPA() {
   }
 
   const toggleChildUpdate = () => {
-    if (childToUpdate || showChildSelection) {
-      setChildToUpdate(null)
+    if (showChildSelection) {
       setShowChildSelection(false)
       return
     }
@@ -62,72 +52,64 @@ function ParentPA() {
     if (childrenForSelection.length === 0) {
       setChildrenError("לא נמצאו ילדים המשויכים לחשבון ההורה.")
     } else if (childrenForSelection.length === 1) {
-      setChildToUpdate(childrenForSelection[0])
+      navigate(`children/${childrenForSelection[0]._id}/edit`)
     } else {
       setShowChildSelection(true)
     }
   }
 
   return (
-    <main className="page-shell">
-      <section className="auth-card" dir="rtl">
-        <h1>האזור האישי</h1>
-        <p>התחברת בהצלחה ({role}).</p>
-        <p>פרטי המשתמש נטענו לאחר אימות מול השרת.</p>
-        {successMessage && <p className="form-message success-message" role="status">{successMessage}</p>}
+    <main className="page-shell parent-area-shell">
+      <section className="auth-card parent-area-card" dir="rtl">
+        <header className="parent-area-header">
+          <h1>האזור האישי</h1>
+          <p>התחברת בהצלחה ({role}). פרטי המשתמש נטענו לאחר אימות מול השרת.</p>
+        </header>
+        {(successMessage || location.state?.successMessage) && (
+          <p className="form-message success-message" role="status">
+            {successMessage || location.state.successMessage}
+          </p>
+        )}
         <Can role="parent">
-          <button className="primary-button" type="button" onClick={() => { setSuccessMessage(""); setRegChild(!regChild) }}>להרשמת ילד</button>
-          <button className="primary-button" type="button" onClick={() => { setUpdatePar(!updatePar) }}>עדכון פרטי הורה</button>
-          <button
-            className="primary-button"
-            type="button"
-            aria-expanded={presentEvents}
-            onClick={() => setPresentEvents(!presentEvents)}
-          >
-            אירועים
-          </button>
-
-          <button
-            className="primary-button"
-            type="button"
-            onClick={toggleChildUpdate}
-            disabled={isLoadingChildren}
-          >
-            {isLoadingChildren ? "טוען ילדים..." : "עדכון פרטי ילד"}
-          </button>
+          <nav className="parent-nav" aria-label="ניווט באזור האישי">
+            <NavLink
+              to="reg-child"
+              className={({ isActive }) =>
+                `parent-nav-link${isActive ? " active" : ""}`
+              }
+            >
+              להרשמת ילד
+            </NavLink>
+            <NavLink
+              to="parent-details"
+              className={({ isActive }) =>
+                `parent-nav-link${isActive ? " active" : ""}`
+              }
+            >
+              עדכון פרטי הורה
+            </NavLink>
+            <NavLink
+              to="events"
+              className={({ isActive }) =>
+                `parent-nav-link${isActive ? " active" : ""}`
+              }
+            >
+              אירועים
+            </NavLink>
+            <button
+              className="parent-nav-link"
+              type="button"
+              onClick={toggleChildUpdate}
+              disabled={isLoadingChildren}
+            >
+              {isLoadingChildren ? "טוען ילדים..." : "עדכון פרטי ילד"}
+            </button>
+            <button className="parent-nav-link" type="button" onClick={signOut}>
+              יציאה
+            </button>
+          </nav>
           {childrenError && <p className="form-message error-message" role="alert">{childrenError}</p>}
         </Can>
-        <button className="primary-button" type="button" onClick={signOut}>יציאה</button>
-        {regChild && (
-          <RegChild
-            setRegChild={setRegChild}
-            onSuccess={() => {
-              setSuccessMessage("רישום הילד הושלם בהצלחה.")
-            }}
-          />
-        )}
-        {updatePar &&
-          <UpdateParent
-            onCancel={() => setUpdatePar(false)}
-            onSuccess={() => {
-              setUpdatePar(false)
-              setSuccessMessage("פרטי ההורה עודכנו בהצלחה.")
-            }}
-          />
-        }
-        {childToUpdate && (
-          <UpdateChild
-            child={childToUpdate}
-            onCancel={() => setChildToUpdate(null)}
-            onSuccess={(updatedChild) => {
-              setChildToUpdate(null)
-              setChildrenForSelection((current) => current.map((child) =>
-                child._id === updatedChild._id ? updatedChild : child
-              ))
-              setSuccessMessage("פרטי הילד עודכנו בהצלחה.")
-            }}
-          />
-        )}
         {showChildSelection && (
           <div className="dialog-backdrop" onClick={() => setShowChildSelection(false)}>
             <section
@@ -146,8 +128,8 @@ function ParentPA() {
                   type="button"
                   key={child._id}
                   onClick={() => {
-                    setChildToUpdate(child)
                     setShowChildSelection(false)
+                    navigate(`children/${child._id}/edit`)
                   }}
                 >
                   {child.fullName}
@@ -163,22 +145,24 @@ function ParentPA() {
             </section>
           </div>
         )}
-        {presentEvents && (
-          <AllEvents
-            childrenForRegistration={childrenForSelection}
-            childrenLoading={isLoadingChildren}
-            childrenError={childrenError}
-            onChildUpdated={(updatedChild) => {
-              setChildrenForSelection((current) => current.map((child) =>
-                child._id === updatedChild._id ? updatedChild : child
-              ))
-            }}
-            onRegistrationSuccess={(childName, eventName) => {
-              setSuccessMessage(`ההרשמה של ${childName} לאירוע "${eventName}" הושלמה בהצלחה.`)
+        {/* מסכי־בן, כמו אירועים, מוצגים כאן לפי הנתיב ולא באמצעות state מקומי. */}
+        <div className="parent-content">
+          <Outlet
+            context={{
+              childrenForRegistration: childrenForSelection,
+              childrenLoading: isLoadingChildren,
+              childrenError,
+              onChildUpdated: (updatedChild) => {
+                setChildrenForSelection((current) => current.map((child) =>
+                  child._id === updatedChild._id ? updatedChild : child
+                ))
+              },
+              onRegistrationSuccess: (childName, eventName) => {
+                setSuccessMessage(`ההרשמה של ${childName} לאירוע "${eventName}" הושלמה בהצלחה.`)
+              },
             }}
           />
-        )}
-
+        </div>
       </section>
     </main>
   )

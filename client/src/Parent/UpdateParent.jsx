@@ -1,9 +1,11 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { api, getErrorMessage } from "../api"
 import { useAuth } from "../useAuth"
 
-const UpdateParent = ({ onCancel, onSuccess }) => {
+const UpdateParent = () => {
     const { user, refreshUser } = useAuth()
+    const navigate = useNavigate()
 
     const [email, setEmail] = useState(user?.email || "")
     const [password, setPassword] = useState("")
@@ -25,8 +27,11 @@ const UpdateParent = ({ onCancel, onSuccess }) => {
         try {
             await api.patch(`/parent/${user._id}`, payload)
             // מרעננים מהשרת כדי שה-Context יכיל את הנתונים המאומתים לאחר העדכון.
-            const updatedUser = await refreshUser()
-            onSuccess?.(updatedUser)
+            await refreshUser()
+            navigate("/personal", {
+                replace: true,
+                state: { successMessage: "פרטי ההורה עודכנו בהצלחה." },
+            })
         } catch (error) {
             setErrorMessage(getErrorMessage(error))
         } finally {
@@ -40,10 +45,10 @@ const UpdateParent = ({ onCancel, onSuccess }) => {
 
 
 
-    return <>
-
+    return (
+      <>
+        <h2>עדכון פרטי הורה</h2>
         <form onSubmit={handleSubmit}>
-
             <div className="form-field">
                 <label htmlFor="email">אימייל:</label>
                 <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -62,21 +67,15 @@ const UpdateParent = ({ onCancel, onSuccess }) => {
             </div>
 
             {errorMessage && <p role="alert">{errorMessage}</p>}
-            <button type="button" onClick={onCancel}>ביטול</button>
-            <button type="submit" disabled={isSubmitting}>
+            <button className="secondary-button" type="button" onClick={() => navigate("/personal")}>
+                ביטול
+            </button>
+            <button className="primary-button" type="submit" disabled={isSubmitting}>
                 {isSubmitting ? "שומר..." : "שמור"}
             </button>
         </form>
-
-
-
-
-
-        {/* <button className="primary-button" type="button" onClick={onCancel}>ביטול</button>
-        <button className="primary-button" type="button" onClick={() => onSuccess()}>שמור</button> */}
-    </>
-
+      </>
+    )
 }
 
 export default UpdateParent
-

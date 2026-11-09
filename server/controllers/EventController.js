@@ -3,6 +3,8 @@ const mongoose = require("mongoose")
 // טוען את מודל Event, שמספק פעולות מול אוסף האירועים במסד הנתונים.
 const Event = require("../models/Event")
 
+const isParentRole = (role) => role === "Parent" || role === "parent"
+
 // מגדיר אילו שדות מותר לשנות; השדות id, _id וחותמות הזמן אינם ניתנים לעדכון כאן.
 const editableEventFields = [
     "name",
@@ -23,12 +25,17 @@ const editableEventFields = [
 const toParentEvent = (event, now = new Date()) => {
     const startReg = event.startReg ? new Date(event.startReg) : null
     const endReg = event.endReg ? new Date(event.endReg) : null
+    const capacity = Number(event.sumOfChilds)
+    const occupiedPlaces = (event.Children?.length ?? 0) + Number(event.SavedPlaces ?? 0)
+    const hasCapacityData = Number.isFinite(capacity)
+    const hasAvailablePlaces = hasCapacityData && occupiedPlaces < capacity
     const registrationOpen = Boolean(
         event.isActive
         && startReg
         && endReg
         && now >= startReg
         && now <= endReg
+        && hasAvailablePlaces
     )
     let registrationMessage = ""
     if (!event.isActive) {
@@ -39,6 +46,10 @@ const toParentEvent = (event, now = new Date()) => {
         registrationMessage = "ההרשמה לאירוע טרם נפתחה."
     } else if (now > endReg) {
         registrationMessage = "ההרשמה לאירוע הסתיימה."
+    } else if (!hasCapacityData) {
+        registrationMessage = "לא ניתן לבדוק את מספר המקומות הפנויים כרגע."
+    } else if (!hasAvailablePlaces) {
+        registrationMessage = "לא נותרו מקומות פנויים באירוע."
     }
 
     return {
@@ -58,9 +69,9 @@ const getAllEvents = async (req, res) => {
     // מתחיל אזור שבו שגיאות ממסד הנתונים ייתפסו ולא יפילו את השרת.
     try {
         // שולף את כל המסמכים מאוסף האירועים; await ממתין לתשובת MongoDB.
-        if (req.user?.role === "Parent") {
+        if (isParentRole(req.user?.role)) {
             const events = await Event.find()
-                .select("_id name date hour price detailingForParent isActive startReg endReg")
+                .select("_id name date hour price detailingForParent isActive startReg endReg Children SavedPlaces sumOfChilds")
                 .lean()
             return res.json(events.map(event => toParentEvent(event)))
         }
@@ -91,8 +102,8 @@ const getById = async (req, res) => {
     try {
         // מחפש אירוע לפי מזהה MongoDB הפנימי שלו.
         const eventQuery = Event.findById(id)
-        if (req.user?.role === "Parent") {
-            eventQuery.select("_id name date hour price detailingForParent isActive startReg endReg")
+        if (isParentRole(req.user?.role)) {
+            eventQuery.select("_id name date hour price detailingForParent isActive startReg endReg Children SavedPlaces sumOfChilds")
         }
         const event = await eventQuery
         // בודק אם השאילתה הצליחה אך לא נמצא אירוע כזה.
@@ -102,7 +113,7 @@ const getById = async (req, res) => {
         // מסיים את בדיקת קיום האירוע.
         }
         // מחזיר את האירוע שנמצא ללקוח כ־JSON.
-        return res.json(req.user?.role === "Parent" ? toParentEvent(event) : event)
+        return res.json(isParentRole(req.user?.role) ? toParentEvent(event) : event)
     // מטפל בשגיאות בלתי צפויות במהלך השליפה.
     } catch (error) {
         // מחזיר שגיאת שרת כללית במקום לחשוף פרטים פנימיים ללקוח.

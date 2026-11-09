@@ -8,6 +8,11 @@ import RegEmployee from "./Registration/RegEmployee"
 import RegParent from "./Registration/RegParent"
 import RegVolun from "./Registration/RegVolun"
 import RegChild from "./Parent/RegChild"
+import ParentEventsPage from "./Parent/ParentEventsPage"
+import ParentPA from "./Parent/ParentPA"
+import ParentChildEditPage from "./Parent/ParentChildEditPage"
+import ParentEventRegistrationPage from "./Parent/ParentEventRegistrationPage"
+import UpdateParent from "./Parent/UpdateParent"
 import PersonalArea from "./PersonalArea"
 import ProtectedRoute from "./ProtectedRoute"
 import "./App.css"
@@ -40,7 +45,44 @@ function App() {
           <Route path="/register/child" element={<RegChild />} />
         </Route>
         <Route element={<ProtectedRoute />}>
-          <Route path="/personal" element={<PersonalArea />} />
+          <Route path="/personal" element={<PersonalArea />}>
+            <Route element={<ProtectedRoute role="parent" />}>
+              <Route element={<ParentPA />}>
+                <Route
+                  index
+                  element={
+                    <section dir="rtl">
+                    </section>
+                  }
+                />
+                {/* כל המסכים האלה נשארים תחת אזור ההורה ומוגנים לפי תפקיד. */}
+                <Route path="events" element={<ParentEventsPage />} />
+                <Route
+                  path="events/:eventId/register/:childId"
+                  element={<ParentEventRegistrationPage />}
+                />
+                <Route path="parent-details" element={<UpdateParent />} />
+                <Route
+                  path="children/:childId/edit"
+                  element={<ParentChildEditPage />}
+                />
+                <Route
+                  path="reg-child"
+                  element={
+                    <RegChild
+                      cancelPath="/personal"
+                      successPath="/personal"
+                      embedded
+                      successState={{
+                        successMessage: "רישום הילד הושלם בהצלחה.",
+                        refreshChildren: true,
+                      }}
+                    />
+                  }
+                />
+              </Route>
+            </Route>
+          </Route>
         </Route>
         <Route path="/unauthorized" element={<Unauthorized />} />
         {/* כתובת לא מוכרת חוזרת למסך הכניסה. */}

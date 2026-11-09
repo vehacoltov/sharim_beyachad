@@ -1,20 +1,29 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { useAuth } from "../useAuth"
-import RegChildToEvent from "../Child/RegChildToEvent"
 
 const EventDetails = ({
     event,
     childrenForRegistration,
     childrenLoading,
     childrenError,
-    onChildUpdated,
-    onRegistrationSuccess,
 }) => {
-    const [toRegisterEvent, setToRegisterEvent] = useState(false)
+    const [showChildSelection, setShowChildSelection] = useState(false)
     const { role } = useAuth()
+    const navigate = useNavigate()
 
-    const handleCancelRegistration = () => {
-        setToRegisterEvent(false)
+    const registerForChild = (childId) => {
+        setShowChildSelection(false)
+        navigate(`${event._id}/register/${childId}`)
+    }
+
+    const handleRegistrationClick = () => {
+        if (role !== "parent") return
+        if (childrenForRegistration.length === 1) {
+            registerForChild(childrenForRegistration[0]._id)
+        } else if (childrenForRegistration.length > 1) {
+            setShowChildSelection(true)
+        }
     }
 
     return (
@@ -31,7 +40,7 @@ const EventDetails = ({
             )}
             {event.registrationOpen ? (
                 <button
-                    onClick={() => setToRegisterEvent((isOpen) => !isOpen)}
+                    onClick={handleRegistrationClick}
                     className="primary-button"
                     type="button"
                     disabled={role === "parent" && (
@@ -43,14 +52,37 @@ const EventDetails = ({
             ) : (
                 <p>{event.registrationMessage}</p>
             )}
-            {toRegisterEvent && role === "parent" && (
-                <RegChildToEvent
-                    event={event}
-                    childrenForRegistration={childrenForRegistration}
-                    onCancel={handleCancelRegistration}
-                    onChildUpdated={onChildUpdated}
-                    onRegistrationSuccess={onRegistrationSuccess}
-                />
+            {showChildSelection && (
+                <div className="dialog-backdrop" onClick={() => setShowChildSelection(false)}>
+                    <section
+                        className="dialog-card"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby={`event-child-selection-${event._id}`}
+                        dir="rtl"
+                        onClick={(clickEvent) => clickEvent.stopPropagation()}
+                    >
+                        <h2 id={`event-child-selection-${event._id}`}>בחירת ילד להרשמה</h2>
+                        <p>לאיזה ילד תרצו לרשום את {event.name}?</p>
+                        {childrenForRegistration.map((child) => (
+                            <button
+                                className="secondary-button"
+                                type="button"
+                                key={child._id}
+                                onClick={() => registerForChild(child._id)}
+                            >
+                                {child.fullName}
+                            </button>
+                        ))}
+                        <button
+                            className="text-link"
+                            type="button"
+                            onClick={() => setShowChildSelection(false)}
+                        >
+                            ביטול
+                        </button>
+                    </section>
+                </div>
             )}
         </article>
     )

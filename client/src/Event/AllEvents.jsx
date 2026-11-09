@@ -6,9 +6,6 @@ const AllEvents = ({
     childrenForRegistration,
     childrenLoading,
     childrenError,
-    onChildUpdated,
-    onRegistrationSuccess,
-    // onClose,
 }) => {
     const [events, setEvents] = useState([])
     const [eventsError, setEventsError] = useState("")
@@ -53,8 +50,6 @@ const AllEvents = ({
                     childrenForRegistration={childrenForRegistration}
                     childrenLoading={childrenLoading}
                     childrenError={childrenError}
-                    onChildUpdated={onChildUpdated}
-                    onRegistrationSuccess={onRegistrationSuccess}
                 />
             ))}
         </section>
