@@ -13,6 +13,9 @@ router.route("/")
         childEventController.create
     )
 
+// שמירת שיבוץ מתבצעת רק לעובד בעל הרשאת matching, בדומה לניהול קשרי המשתתפים.
+router.post("/assign", matching, childEventController.assign)
+
 router.route("/:id")
     .get(matching, childEventController.getById)
     .put(matching, childEventController.update)

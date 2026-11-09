@@ -36,6 +36,212 @@
   color: #17324d;
 }
 
+.manage-event,
+.matching-page {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.manage-event h2,
+.matching-page h2,
+.matching-list h3 {
+  margin: 0;
+  color: #17324d;
+}
+
+.matching-event-name {
+  margin: 0;
+  color: #597082;
+}
+
+.matching-lists {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.matching-list {
+  min-width: 0;
+  padding-inline-start: 16px;
+  border-inline-start: 1px solid #d9e3ed;
+}
+
+.matching-list:last-child {
+  padding-inline-start: 0;
+  border-inline-start: 0;
+}
+
+.matching-list ul {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding-inline-start: 20px;
+}
+
+.matching-participant {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.matching-participant.is-selected {
+  border-color: #16847a;
+  background: #e7f4f1;
+}
+
+.matching-participant-main {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.matching-participant-name {
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+
+.matching-assignment-label {
+  color: #597082;
+}
+
+.matching-participant-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+/* מציגים פקדי שורה בריחוף וגם במעבר מקלדת, אך לא מסתירים אותם מקוראי מסך. */
+.matching-participant:hover .matching-participant-actions,
+.matching-participant:focus-within .matching-participant-actions {
+  opacity: 1;
+}
+
+.matching-icon-button,
+.matching-details-close {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: #edf5f4;
+  color: #145b55;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.matching-icon-button:focus-visible,
+.matching-details-close:focus-visible {
+  outline: 3px solid #16847a55;
+  outline-offset: 2px;
+}
+
+.matching-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.matching-details-popup {
+  position: fixed;
+  z-index: 4;
+  width: min(320px, calc(100vw - 24px));
+  max-height: min(360px, calc(100vh - 24px));
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid #bac9d6;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 28px #17324d2b;
+}
+
+.matching-details-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.matching-details-heading h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #17324d;
+}
+
+.matching-details-close {
+  background: #f1f6fa;
+  color: #17324d;
+  font-size: 24px;
+}
+
+.matching-details-popup dl {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+
+.matching-detail-row {
+  display: grid;
+  gap: 2px;
+}
+
+.matching-detail-row dt {
+  color: #597082;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.matching-detail-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.matching-details-popup > p {
+  margin: 14px 0 0;
+}
+
+.matching-confirm-dialog {
+  width: min(100%, 440px);
+}
+
+.matching-confirm-dialog p {
+  margin: 0;
+}
+
+.matching-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.matching-confirm-actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+/* במכשירי מגע אין hover, ולכן מציגים את פעולות השורה באופן קבוע. */
+@media (hover: none) {
+  .matching-participant-actions {
+    opacity: 1;
+  }
+}
+
+.matching-list p {
+  margin: 12px 0 0;
+}
+
 .parent-event-card {
   display: grid;
   gap: 10px;
@@ -133,6 +339,33 @@
   text-align: right;
 }
 
+.employee-home-button {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 7px;
+  border: 0;
+  border-radius: 8px;
+  background: #edf5f4;
+  color: #145b55;
+  cursor: pointer;
+}
+
+.employee-home-button svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.employee-home-button:focus-visible {
+  outline: 3px solid #16847a55;
+  outline-offset: 2px;
+}
+
 .primary-button:disabled {
   cursor: wait;
   opacity: 0.65;
@@ -191,5 +424,21 @@
   .auth-card,
   .dialog-card {
     padding: 24px 20px;
+  }
+
+  .matching-lists {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .matching-list,
+  .matching-list:last-child {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+
+  /* במגע אין hover, לכן משאירים את פעולות השורה גלויות במסכים צרים. */
+  .matching-participant-actions {
+    opacity: 1;
   }
 }

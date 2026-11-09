@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { api, getErrorMessage } from "../api"
+import { useAuth } from "../useAuth"
 import EventDetails from "./EventDetails"
 
 const AllEvents = ({
@@ -10,6 +12,8 @@ const AllEvents = ({
     onRegistrationSuccess,
     // onClose,
 }) => {
+    const navigate = useNavigate()
+    const { role } = useAuth()
     const [events, setEvents] = useState([])
     const [eventsError, setEventsError] = useState("")
     const [eventsLoading, setEventsLoading] = useState(true)
@@ -46,17 +50,28 @@ const AllEvents = ({
             {!eventsLoading && !eventsError && events.length === 0 && (
                 <p>אין אירועים להצגה כרגע.</p>
             )}
-            {events.map((event) => (
-                <EventDetails
-                    key={event._id}
-                    event={event}
-                    childrenForRegistration={childrenForRegistration}
-                    childrenLoading={childrenLoading}
-                    childrenError={childrenError}
-                    onChildUpdated={onChildUpdated}
-                    onRegistrationSuccess={onRegistrationSuccess}
-                />
-            ))}
+            {role === "employee"
+                ? events.map((event) => (
+                    <button
+                        key={event._id}
+                        className="secondary-button"
+                        type="button"
+                        onClick={() => navigate(`/EmployeePA/UpdateEvent/${event._id}`)}
+                    >
+                        {event.name}
+                    </button>
+                ))
+                : events.map((event) => (
+                    <EventDetails
+                        key={event._id}
+                        event={event}
+                        childrenForRegistration={childrenForRegistration}
+                        childrenLoading={childrenLoading}
+                        childrenError={childrenError}
+                        onChildUpdated={onChildUpdated}
+                        onRegistrationSuccess={onRegistrationSuccess}
+                    />
+                ))}
         </section>
     )
 }
