@@ -9,13 +9,14 @@ import RegParent from "./Registration/RegParent"
 import RegVolun from "./Registration/RegVolun"
 import RegChild from "./Parent/RegChild"
 import ParentEventsPage from "./Parent/ParentEventsPage"
-import ParentPA from "./Parent/ParentPA"
 import ParentChildEditPage from "./Parent/ParentChildEditPage"
-import ParentEventRegistrationPage from "./Parent/ParentEventRegistrationPage"
 import UpdateParent from "./Parent/UpdateParent"
+import UpdateVolunteer from "./Volunteer/UpdateVolunteer"
+import PersonalEventsPage from "./PersonalEventsPage"
 import PersonalArea from "./PersonalArea"
 import ProtectedRoute from "./ProtectedRoute"
 import "./App.css"
+import UpdateEmployee from "./Employee/UpdateEmployee"
 
 // מציג יעד ברור למשתמש מאומת שניסה לפתוח נתיב שאינו מורשה עבורו.
 function Unauthorized() {
@@ -30,7 +31,13 @@ function Unauthorized() {
   )
 }
 
-// מגדיר את ה-Router; Route ללא path משמש layout route, ו-ProtectedRoute מחזיר Outlet.
+/**
+ * מגדיר את היררכיית הניווט.
+ * Route ללא path הוא layout route: הוא מוסיף הגנה בלי להוסיף חלק לכתובת.
+ * ProtectedRoute בודק התחברות ותפקיד, ומציג את Route הבן דרך Outlet.
+ * לכן /personal/events הוא כתובת אחת לשני תפקידים, ואילו פעולות פרופיל
+ * ונתיבי רישום הילד נמצאים תחת guard ייעודי להורה.
+ */
 function App() {
   return (
     <BrowserRouter>
@@ -44,44 +51,55 @@ function App() {
         <Route element={<ProtectedRoute role="parent" />}>
           <Route path="/register/child" element={<RegChild />} />
         </Route>
+
         <Route element={<ProtectedRoute />}>
           <Route path="/personal" element={<PersonalArea />}>
-            <Route element={<ProtectedRoute role="parent" />}>
-              <Route element={<ParentPA />}>
-                <Route
-                  index
-                  element={
-                    <section dir="rtl">
-                    </section>
-                  }
-                />
-                {/* כל המסכים האלה נשארים תחת אזור ההורה ומוגנים לפי תפקיד. */}
-                <Route path="events" element={<ParentEventsPage />} />
-                <Route
-                  path="events/:eventId/register/:childId"
-                  element={<ParentEventRegistrationPage />}
-                />
-                <Route path="parent-details" element={<UpdateParent />} />
-                <Route
-                  path="children/:childId/edit"
-                  element={<ParentChildEditPage />}
-                />
-                <Route
-                  path="reg-child"
-                  element={
-                    <RegChild
-                      cancelPath="/personal"
-                      successPath="/personal"
-                      embedded
-                      successState={{
-                        successMessage: "רישום הילד הושלם בהצלחה.",
-                        refreshChildren: true,
-                      }}
-                    />
-                  }
-                />
-              </Route>
+            <Route index element={<section dir="rtl" />} />
+            {/* אירועים הם כתובת משותפת: הרשאה לשני התפקידים, והתוכן נבחר לפי role. */}
+            <Route element={<ProtectedRoute roles={["parent", "volunteer"]} />}>
+              <Route path="events" element={<PersonalEventsPage />} />
             </Route>
+            <Route element={<ProtectedRoute role="parent" />}>
+              {/* שלבי רישום הילד נמצאים בכתובות נפרדות כדי שקישור/רענון ישמרו את השלב. */}
+              <Route
+                path="events/:eventId/register/:childId"
+                element={<ParentEventsPage registrationStep="details" />}
+              />
+              <Route
+                path="events/:eventId/register/:childId/edit"
+                element={<ParentEventsPage registrationStep="edit" />}
+              />
+              <Route path="parent-details" element={<UpdateParent />} />
+              {/* שאר פעולות ניהול הפרופיל והרישום לילדים מוגבלות להורה. */}
+              <Route
+                path="children/:childId/edit"
+                element={<ParentChildEditPage />}
+              />
+              <Route
+                path="reg-child"
+                element={
+                  <RegChild
+                    cancelPath="/personal"
+                    successPath="/personal"
+                    embedded
+                    successState={{
+                      successMessage: "רישום הילד הושלם בהצלחה.",
+                      refreshChildren: true,
+                    }}
+                  />
+                }
+              />
+            </Route>
+            {/* נתיב הפרופיל מקונן ב-/personal ונגיש רק למתנדבת המאומתת. */}
+            <Route element={<ProtectedRoute role="volunteer" />}>
+              <Route path="volunteer-details" element={<UpdateVolunteer />} />
+            </Route>
+
+            {/* נתיב הפרופיל מקונן ב-/personal ונגיש רק לעובד/ת המאומת/ת. */}
+            <Route element={<ProtectedRoute role="employee" />}>
+              <Route path="employee-details" element={<UpdateEmployee />} />
+            </Route>
+
           </Route>
         </Route>
         <Route path="/unauthorized" element={<Unauthorized />} />

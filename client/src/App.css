@@ -249,6 +249,42 @@
   opacity: 0.65;
 }
 
+/*
+ * כללי עיצוב לטופס רישום המתנדבת בלבד:
+ * status מצמיד את הודעת ההרשמה לכפתור הביטול, וה-form/actions מסדרים
+ * את שדה ההעדפה והפעולות גם במסך צר. cursor wait מוצג רק בזמן בקשת רשת.
+ */
+.volunteer-registration-button {
+  justify-self: start;
+}
+
+.volunteer-registration-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.volunteer-registration-form {
+  display: grid;
+  gap: 12px;
+  max-width: 440px;
+}
+
+.volunteer-registration-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.volunteer-registration-button:disabled {
+  cursor: default;
+}
+
+.volunteer-registration-button.is-pending:disabled {
+  cursor: wait;
+}
+
 .primary-button.active {
   background: #145b55;
 }

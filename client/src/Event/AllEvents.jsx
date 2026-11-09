@@ -3,15 +3,22 @@ import { api, getErrorMessage } from "../api"
 import EventDetails from "./EventDetails"
 
 const AllEvents = ({
-    childrenForRegistration,
-    childrenLoading,
-    childrenError,
+    selectedEventId,
+    selectedChildId,
+    registrationStep,
+    childrenForRegistration = [],
+    childrenLoading = false,
+    childrenError = "",
+    onChildUpdated,
+    onRegistrationSuccess,
 }) => {
     const [events, setEvents] = useState([])
     const [eventsError, setEventsError] = useState("")
     const [eventsLoading, setEventsLoading] = useState(true)
 
     useEffect(() => {
+        // האירועים נטענים פעם אחת בכניסה למסך. active הוא cleanup guard:
+        // אם המשתמש עוזב לפני סיום הבקשה, תוצאתה לא תעדכן state של רכיב שהוסר.
         let active = true
         api.get("/event")
             .then((eventsResponse) => {
@@ -47,9 +54,13 @@ const AllEvents = ({
                 <EventDetails
                     key={event._id}
                     event={event}
+                    selectedChildId={event._id === selectedEventId ? selectedChildId : undefined}
+                    registrationStep={event._id === selectedEventId ? registrationStep : undefined}
                     childrenForRegistration={childrenForRegistration}
                     childrenLoading={childrenLoading}
                     childrenError={childrenError}
+                    onChildUpdated={onChildUpdated}
+                    onRegistrationSuccess={onRegistrationSuccess}
                 />
             ))}
         </section>

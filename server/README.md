@@ -202,6 +202,17 @@ Many Requests`, כוללת `retryAfterSeconds` ומגדירה כותרת `Retry-
 | `PUT /event` | עדכון אירוע; `_id` נשלח בגוף הבקשה |
 | `DELETE /event` | מחיקת אירוע; `_id` נשלח בגוף הבקשה |
 
+### הרשמת מתנדבת לאירוע (`/volunteer-event`)
+
+| שיטה ונתיב | פעולה |
+|---|---|
+| `POST /volunteer-event/register` | רישום המתנדבת המחוברת לאירוע; גוף הבקשה: `{ "event": "<eventId>", "favouredChild": "<שם הילד/ה>" }`; `favouredChild` הוא אופציונלי |
+| `POST /volunteer-event/unregister` | ביטול הרשמת המתנדבת המחוברת לאירוע; גוף הבקשה: `{ "event": "<eventId>" }` |
+
+הנתיב מיועד למתנדבות בלבד. השרת בודק שהאירוע פעיל ושההרשמה בתאריכים
+המוגדרים, מונע רישום כפול, ומוסיף את רישום המתנדבת לרשימת `Event.Volunteers`.
+רישום מתנדבת אינו תלוי במכסת הילדים של האירוע.
+
 שדות היצירה המוכרים: `name`, `id`, `Children`, `Volunteers`, `date`, `startReg`,
 `endReg`, `hour`, `detailingForParent`, `detailingForVolun`, `sumOfChilds`,
 `SavedPlaces`, `isActive`. שדות `startReg` ו-`endReg` הם תאריך ושעה (Date),
@@ -235,7 +246,7 @@ Many Requests`, כוללת `retryAfterSeconds` ומגדירה כותרת `Retry-
 | `Volunteer` | `fullName`, `password`, `email`, `id`, `phone`, `age`, `seminar`, `detaling` |
 | `Child` | `fullName`, `parent`, `id`, `phone`, `anothwrPhone`, `age`, `epilepsy`, `sensitivity`, `medicines`, `canBeFilemed`, `detailing`, `notes`, `img`, `status`, `category` |
 | `ChildEvent` | `child`, `event` (reference to `Event`), `volunteer`, `favoriteVolun` |
-| `VolunteerEvent` | `child`, `volunteer`, `notes`, `favouredChild` |
+| `VolunteerEvent` | `child`, `event`, `volunteer`, `notes`, `favouredChild` |
 | `Event` | `name`, `id`, `Children`, `sumOfChilds`, `SavedPlaces`, `isActive`, `Volunteers`, `date`, `startReg`, `endReg`, `hour`, `detailingForParent`, `detailingForVolun` |
 | `Permission` | `id`, `name` (hash), `nameLookup` (HMAC), `password` (hash), `validActions` (string array) |
 
