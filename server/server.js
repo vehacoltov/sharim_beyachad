@@ -6,6 +6,7 @@ require("dotenv").config()
 const mongoose = require("mongoose")
 const connectDB=require("./config/dbConn")
 const express = require("express")
+const fs = require("fs")
 const path = require("path")
 const cors = require("cors")
 const corsOptions = require("./config/corsOptions")
@@ -49,11 +50,41 @@ mongoose.connection.once('open', async () => {
         // משלימים את הרשאת admin לאחר שהמסד זמין ולפני קבלת בקשות.
         // אם ה-seed נכשל, לא פותחים שרת שחסר בו חשבון האתחול הנדרש.
         await ensurePermissionSeeds()
+
+        // הפעלת נתוני ההדגמה אפשרית רק כשהמשתמש ביקש זאת במפורש ובמצב development.
+        // הטעינה המותנית מאפשרת להסיר את קובץ ה-seed בלי לפגוע באתחול הרגיל.
+        if (process.env.SEED_DEV_DATA === "true") {
+            if (process.env.NODE_ENV === "development") {
+                // בדיקת קיום מאפשרת למחוק את קובץ ה-seed בלי להפוך אותו לתלות חובה של השרת.
+                const seedFilePath = path.join(__dirname, "dev", "seedDevelopmentData.js")
+                if (fs.existsSync(seedFilePath)) {
+                    // require מתבצע רק עבור מצב פיתוח מפורש ורק לאחר פתיחת חיבור MongoDB.
+                    const { seedDevelopmentData } = require(seedFilePath)
+                    // העברת שם המסד המחובר והשם המאושר מאפשרת ל-seed לוודא התאמה וסיומת _dev.
+                    console.log(mongoose.connection.name);
+                    
+                    const created = await seedDevelopmentData({
+                        databaseName: mongoose.connection.name,
+                        expectedDatabaseName: process.env.DEV_DATABASE_NAME,
+                        password: process.env.DEV_SEED_PASSWORD
+                    })
+                    // דיווח הצלחה מופיע רק לאחר שכל הרשומות והקשרים נוצרו ונבדקו.
+                    console.log("Development seed completed:", created)
+                } else {
+                    // ממשיכים בהפעלת ה-API אם מנגנון ההדגמה הוסר או הקובץ אינו זמין.
+                    console.warn("Development seed file is missing; starting the server without demo data")
+                }
+            } else {
+                // Production וכל מצב אחר אינם טוענים את קובץ ה-seed ואינם נוגעים בנתונים.
+                console.warn("Development seed was requested but ignored because NODE_ENV is not development")
+            }
+        }
+
         app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
     } catch (error) {
         // כשל ב-seed הוא כשל אתחול: יציאה מונעת מצב שבו חלק מהמערכת זמין
         // וחלק מתהליכי ההרשאה אינם יכולים לפעול כראוי.
-        console.error("Failed to ensure initial admin permission:", error)
+        console.error("Failed to initialize the server:", error)
         process.exit(1)
     }
 })
