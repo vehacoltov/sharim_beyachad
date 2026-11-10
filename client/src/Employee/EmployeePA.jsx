@@ -58,6 +58,7 @@ const EmployeePA = () => {
           >
             עדכון פרטים אישיים
           </NavLink>
+
         </nav>
         <Outlet />
         <Can permission="permissions">
@@ -86,39 +87,18 @@ const EmployeePA = () => {
               הוסף אירוע
             </button>
           )}
-
-           
-            {/* הכפתור עדיין משמש כמתג: לחיצה במסך האירועים מחזירה למסך העובד. */}
-            <button
-              className="primary-button"
-              type="button"
-              onClick={() => navigate(
-                isAllEventsRoute ? "/EmployeePA" : "/EmployeePA/AllEvents",
-                { replace: true },
-              )}
-            >
-              כל האירועים
-            </button>
-          
-        
-        {/* ה־Outlet מציג מסך Route במקום הרינדור המותנה הקודם, בתוך אותה מעטפת עובד. */}
-        
-
-
-         
-
-
-          <NavLink
-            to="employee-details"
-            className={({ isActive }) =>
-              `parent-nav-link${isActive ? " active" : ""}`
-            }
+          {/* הכפתור עדיין משמש כמתג: לחיצה במסך האירועים מחזירה למסך העובד. */}
+          <button
+            className="primary-button"
+            type="button"
+            onClick={() => navigate(
+              isAllEventsRoute ? "/EmployeePA" : "/EmployeePA/AllEvents",
+              { replace: true },
+            )}
           >
-            עדכון פרטים אישיים
-          </NavLink>
-
+            כל האירועים
+          </button>
         </Can>
-        <Outlet />
         <button className="primary-button" type="button" onClick={signOut}>יציאה</button>
       </section>
     </main>
