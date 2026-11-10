@@ -2,6 +2,9 @@
 const mongoose = require("mongoose")
 // טוען את מודל Event, שמספק פעולות מול אוסף האירועים במסד הנתונים.
 const Event = require("../models/Event")
+const VolunteerEvent = require("../models/VolunEvent")
+
+const isParentRole = (role) => role === "Parent" || role === "parent"
 
 // מגדיר אילו שדות מותר לשנות; השדות id, _id וחותמות הזמן אינם ניתנים לעדכון כאן.
 const editableEventFields = [
@@ -20,15 +23,25 @@ const editableEventFields = [
     "isActive"
 ]
 
+/**
+ * בונה DTO (תצוגת API) מצומצם לאירוע עבור הורה.
+ * חישוב פתיחת ההרשמה כולל קיבולת ילדים: מספר הילדים הרשומים ועוד המקומות
+ * השמורים חייב להיות קטן מהקיבולת. ההמרה מונעת מהלקוח לשכפל כלל עסקי זה.
+ */
 const toParentEvent = (event, now = new Date()) => {
     const startReg = event.startReg ? new Date(event.startReg) : null
     const endReg = event.endReg ? new Date(event.endReg) : null
+    const capacity = Number(event.sumOfChilds)
+    const occupiedPlaces = (event.Children?.length ?? 0) + Number(event.SavedPlaces ?? 0)
+    const hasCapacityData = Number.isFinite(capacity)
+    const hasAvailablePlaces = hasCapacityData && occupiedPlaces < capacity
     const registrationOpen = Boolean(
         event.isActive
         && startReg
         && endReg
         && now >= startReg
         && now <= endReg
+        && hasAvailablePlaces
     )
     let registrationMessage = ""
     if (!event.isActive) {
@@ -39,6 +52,10 @@ const toParentEvent = (event, now = new Date()) => {
         registrationMessage = "ההרשמה לאירוע טרם נפתחה."
     } else if (now > endReg) {
         registrationMessage = "ההרשמה לאירוע הסתיימה."
+    } else if (!hasCapacityData) {
+        registrationMessage = "לא ניתן לבדוק את מספר המקומות הפנויים כרגע."
+    } else if (!hasAvailablePlaces) {
+        registrationMessage = "לא נותרו מקומות פנויים באירוע."
     }
 
     return {
@@ -53,19 +70,71 @@ const toParentEvent = (event, now = new Date()) => {
     }
 }
 
-// מגדיר פעולה אסינכרונית שמטפלת בבקשה לקבלת כל האירועים.
+/**
+ * בונה DTO למתנדבת, כולל סטטוס ההרשמה שלה והאם חלון ההרשמה פתוח.
+ * הרשמת מתנדבת אינה צורכת מקום במכסת הילדים; לכן בודקים פעילות ותאריכים,
+ * אך לא sumOfChilds / Children / SavedPlaces.
+ */
+const toVolunteerEvent = (event, isVolunteerRegistered, now = new Date()) => {
+    const startReg = event.startReg ? new Date(event.startReg) : null
+    const endReg = event.endReg ? new Date(event.endReg) : null
+    const volunteerRegistrationOpen = Boolean(
+        event.isActive
+        && startReg
+        && endReg
+        && now >= startReg
+        && now <= endReg
+    )
+    let volunteerRegistrationMessage = ""
+    if (!event.isActive) {
+        volunteerRegistrationMessage = "ההרשמה לאירוע אינה פעילה."
+    } else if (!startReg || !endReg) {
+        volunteerRegistrationMessage = "מועדי ההרשמה לאירוע אינם זמינים."
+    } else if (now < startReg) {
+        volunteerRegistrationMessage = "ההרשמה לאירוע טרם נפתחה."
+    } else if (now > endReg) {
+        volunteerRegistrationMessage = "ההרשמה לאירוע הסתיימה."
+    }
+
+    return {
+        ...event,
+        isVolunteerRegistered,
+        volunteerRegistrationOpen,
+        volunteerRegistrationMessage
+    }
+}
+
+/**
+ * GET /event מחזיר מידע המותאם לתפקיד שאומת ב-middleware.
+ * להורה מוחזר DTO מצומצם עם זמינות לפי קיבולת; למתנדבת מחושב סטטוס אישי
+ * בהרשמה; עובדים ממשיכים לקבל מסמכי אירוע מלאים בהתאם להרשאתם.
+ */
 const getAllEvents = async (req, res) => {
     // מתחיל אזור שבו שגיאות ממסד הנתונים ייתפסו ולא יפילו את השרת.
     try {
         // שולף את כל המסמכים מאוסף האירועים; await ממתין לתשובת MongoDB.
-        if (req.user?.role === "Parent") {
+        if (isParentRole(req.user?.role)) {
             const events = await Event.find()
-                .select("_id name date hour price detailingForParent isActive startReg endReg")
+                .select("_id name date hour price detailingForParent isActive startReg endReg Children SavedPlaces sumOfChilds")
                 .lean()
             return res.json(events.map(event => toParentEvent(event)))
         }
 
-        const events = await Event.find()
+        const events = await Event.find().lean()
+        if (req.user?.role === "Volunteer") {
+            // שאילתה אחת לכל האירועים מונעת דפוס N+1 (שאילתה נפרדת לכל כרטיס).
+            const registrations = await VolunteerEvent.find({
+                event: { $in: events.map(event => event._id) },
+                volunteer: req.user.id
+            }).select("event").lean()
+            const registeredEventIds = new Set(
+                registrations.map(registration => String(registration.event))
+            )
+            // Set של מזהי אירועים מאפשר membership lookup יעיל בזמן בניית התשובה.
+            return res.json(events.map(event =>
+                toVolunteerEvent(event, registeredEventIds.has(String(event._id)))
+            ))
+        }
         // מחזיר ללקוח את רשימת האירועים בפורמט JSON.
         return res.json(events)
     // מטפל בשגיאה שהתרחשה במהלך השליפה.
@@ -76,7 +145,10 @@ const getAllEvents = async (req, res) => {
     }
 }
 
-// מגדיר פעולה אסינכרונית לקבלת אירוע יחיד לפי מזהה שבכתובת.
+/**
+ * GET /event/:id מחזיר לאותו תפקיד את אותו חוזה נתונים כמו GET /event,
+ * כדי שמסך שנפתח ישירות לפי URL לא יקבל שדות או כללי זמינות שונים מהרשימה.
+ */
 const getById = async (req, res) => {
     // שולף מתוך פרמטרי הנתיב את id, למשל מתוך /event/:id.
     const { id } = req.params
@@ -91,10 +163,10 @@ const getById = async (req, res) => {
     try {
         // מחפש אירוע לפי מזהה MongoDB הפנימי שלו.
         const eventQuery = Event.findById(id)
-        if (req.user?.role === "Parent") {
-            eventQuery.select("_id name date hour price detailingForParent isActive startReg endReg")
+        if (isParentRole(req.user?.role)) {
+            eventQuery.select("_id name date hour price detailingForParent isActive startReg endReg Children SavedPlaces sumOfChilds")
         }
-        const event = await eventQuery
+        const event = await eventQuery.lean()
         // בודק אם השאילתה הצליחה אך לא נמצא אירוע כזה.
         if (!event) {
             // מחזיר 404 ומפסיק, כדי לא לנסות להחזיר ערך חסר.
@@ -102,7 +174,18 @@ const getById = async (req, res) => {
         // מסיים את בדיקת קיום האירוע.
         }
         // מחזיר את האירוע שנמצא ללקוח כ־JSON.
-        return res.json(req.user?.role === "Parent" ? toParentEvent(event) : event)
+        if (isParentRole(req.user?.role)) {
+            return res.json(toParentEvent(event))
+        }
+        if (req.user?.role === "Volunteer") {
+            // אותו חוזה נתונים חל גם בשליפת אירוע יחיד, למשל בזרימות המשתמשות ב-GET /:id.
+            const isVolunteerRegistered = await VolunteerEvent.exists({
+                event: event._id,
+                volunteer: req.user.id
+            })
+            return res.json(toVolunteerEvent(event, Boolean(isVolunteerRegistered)))
+        }
+        return res.json(event)
     // מטפל בשגיאות בלתי צפויות במהלך השליפה.
     } catch (error) {
         // מחזיר שגיאת שרת כללית במקום לחשוף פרטים פנימיים ללקוח.

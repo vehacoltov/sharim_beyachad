@@ -28,6 +28,10 @@ import { api, getErrorMessage } from "../api"
 function RegistrationForm({
   setRegChild,
   onSuccess,
+  cancelPath,
+  successPath,
+  successState,
+  embedded = false,
   title,
   endpoint,
   fields,
@@ -440,18 +444,15 @@ function RegistrationForm({
         payload
       )
 
-      /**
-       * לאחר הצלחה עוברים למסך ההתחברות.
-       *
-       * state של React Router מאפשר להעביר
-       * מידע למסך היעד בלי להוסיף אותו ל-URL.
-       *
-       * המסך הבא יכול לקרוא את ההודעה
-       * באמצעות useLocation.
-       */
+      // טפסים משובצים יכולים להיסגר דרך callback; טפסי נתיב מנווטים ליעד מוגדר.
       if (setRegChild) {
         setRegChild(false)
         onSuccess?.()
+      } else if (successPath) {
+        navigate(successPath, {
+          replace: true,
+          state: successState,
+        })
       }
       else {
         navigate("/", {
@@ -519,10 +520,12 @@ function RegistrationForm({
    * הודעות השגיאה מתעדכנות לפי ה-State.
    */
   return (
-    <main className="page-shell">
+    <div className={embedded ? "registration-form-container" : "page-shell"}>
 
       <form
-        className="auth-card registration-card"
+        className={embedded
+          ? "registration-card registration-form-embedded"
+          : "auth-card registration-card"}
         onSubmit={handleSubmit}
         dir="rtl"
       >
@@ -711,13 +714,13 @@ function RegistrationForm({
         <button
           className="text-link"
           type="button"
-          onClick={() => navigate("/")}
+          onClick={() => navigate(cancelPath || "/")}
         >
-          חזרה להתחברות
+          {cancelPath ? "ביטול וחזרה לאזור האישי" : "חזרה להתחברות"}
         </button>
 
       </form>
-    </main>
+    </div>
   )
 }
 

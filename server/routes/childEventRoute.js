@@ -4,6 +4,7 @@ const requireAction = require("../middleware/requireAction")
 const { requireRoleOrAction } = require("../middleware/requireUserAccess")
 
 const router = express.Router()
+// matching שומר על קריאה/עריכה ניהולית; הורה מקבל חריג רק ליצירה ולבדיקת הילד שלו.
 const matching = requireAction("matching")
 
 router.route("/")
@@ -15,6 +16,12 @@ router.route("/")
 
 // שמירת שיבוץ מתבצעת רק לעובד בעל הרשאת matching, בדומה לניהול קשרי המשתתפים.
 router.post("/assign", matching, childEventController.assign)
+router.get(
+    "/check",
+    // הגנה זהה ליצירה: middleware מתיר הורה או עובד מורשה; controller בודק בעלות ילד.
+    requireRoleOrAction(["Parent"], "matching"),
+    childEventController.checkRegistration
+)
 
 router.route("/:id")
     .get(matching, childEventController.getById)

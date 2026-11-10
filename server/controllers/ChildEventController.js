@@ -26,6 +26,42 @@ controller.update = async (req, res) => {
     return updateChildEvent(req, res)
 }
 
+/**
+ * GET /child-event/check הוא preflight להצגת הודעה מוקדמת לפני פתיחת הטופס.
+ * זו בדיקת קריאה בלבד ולא הבטחה שהרישום עדיין פנוי: בין הבדיקה ל-POST
+ * משתמש אחר יכול להירשם. לכן create והאינדקס הייחודי נשארים האכיפה בפועל.
+ */
+controller.checkRegistration = async (req, res) => {
+    const { child: childId, event: eventId } = req.query
+    if (!mongoose.isValidObjectId(childId) || !mongoose.isValidObjectId(eventId)) {
+        return res.status(400).json({ message: "נדרשים מזהי ילד ואירוע תקינים" })
+    }
+
+    try {
+        const childQuery = Child.findById(childId)
+        // מזהה ההורה מגיע מה-JWT; אי אפשר לבדוק ילד של חשבון אחר באמצעות שינוי query.
+        if (req.user?.role === "Parent") {
+            childQuery.where({ parent: req.user.id })
+        }
+        const child = await childQuery.select("_id").lean()
+        if (!child) {
+            return res.status(404).json({ message: "הילד לא נמצא או שאינו משויך לחשבון ההורה" })
+        }
+
+        const registration = await ChildEvent.exists({ child: childId, event: eventId })
+        return res.json({ isRegistered: Boolean(registration) })
+    } catch (error) {
+        console.error("Failed to check child event registration:", error)
+        return res.status(500).json({ message: "בדיקת הרשמת הילד לאירוע נכשלה" })
+    }
+}
+
+/**
+ * POST /child-event יוצר רישום ילד לאירוע.
+ * הורה יכול לרשום רק ילד ששייך אליו; עובד יכול לצרף שדה volunteer בהתאם
+ * להרשאות השרת. תפיסת מקום מותנית מתבצעת בעדכון MongoDB יחיד כדי ששתי
+ * בקשות מקבילות לא יחרגו מהקיבולת, ואינדקס child+event מונע כפילות.
+ */
 controller.create = async (req, res) => {
     const { child: childId, event: eventId, favoriteVolun = "" } = req.body ?? {}
     const allowedFields = req.user?.role === "Parent"
@@ -78,6 +114,8 @@ controller.create = async (req, res) => {
             favoriteVolun: favoriteVolun.trim()
         })
         const now = new Date()
+        // התנאי וה-$addToSet נבדקים/מתבצעים באותה פעולת DB (atomic update);
+        // כך בקשות מתחרות לא יכולות שתיהן לתפוס את המקום האחרון.
         const updatedEvent = await Event.findOneAndUpdate(
             {
                 _id: eventId,
@@ -120,6 +158,7 @@ controller.create = async (req, res) => {
         try {
             await registration.save()
         } catch (error) {
+            // אם יצירת הקשר נכשלה אחרי תפיסת המקום, מחזירים את ההפניה באירוע.
             try {
                 await Event.updateOne(
                     { _id: eventId },

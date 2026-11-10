@@ -1,4 +1,6 @@
 import { Outlet, useLocation, useMatch, useNavigate } from "react-router-dom"
+import { useState } from "react"
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "../useAuth"
 import Can from "../Can"
 
@@ -43,6 +45,22 @@ const EmployeePA = () => {
           </svg>
         </button>
         <h1>האזור האישי לעובד</h1>
+        {location.state?.successMessage && (
+          <p className="form-message success-message" role="status">
+            {location.state.successMessage}
+          </p>
+        )}
+        <nav className="parent-nav" aria-label="ניווט באזור האישי לעובד">
+          <NavLink
+            to="employee-details"
+            className={({ isActive }) =>
+              `parent-nav-link${isActive ? " active" : ""}`
+            }
+          >
+            עדכון פרטים אישיים
+          </NavLink>
+        </nav>
+        <Outlet />
         <Can permission="permissions">
           <p>חשבון זה כולל הרשאות ניהול.</p>
         </Can>
@@ -83,8 +101,24 @@ const EmployeePA = () => {
               כל האירועים
             </button>
           
-        </Can>
+        
         {/* ה־Outlet מציג מסך Route במקום הרינדור המותנה הקודם, בתוך אותה מעטפת עובד. */}
+        
+
+
+         
+
+
+          <NavLink
+            to="employee-details"
+            className={({ isActive }) =>
+              `parent-nav-link${isActive ? " active" : ""}`
+            }
+          >
+            עדכון פרטים אישיים
+          </NavLink>
+
+        </Can>
         <Outlet />
         <button className="primary-button" type="button" onClick={signOut}>יציאה</button>
       </section>

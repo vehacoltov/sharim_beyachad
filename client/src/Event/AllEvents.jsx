@@ -5,12 +5,14 @@ import { useAuth } from "../useAuth"
 import EventDetails from "./EventDetails"
 
 const AllEvents = ({
-    childrenForRegistration,
-    childrenLoading,
-    childrenError,
+    selectedEventId,
+    selectedChildId,
+    registrationStep,
+    childrenForRegistration = [],
+    childrenLoading = false,
+    childrenError = "",
     onChildUpdated,
     onRegistrationSuccess,
-    // onClose,
 }) => {
     const navigate = useNavigate()
     const { role } = useAuth()
@@ -19,6 +21,8 @@ const AllEvents = ({
     const [eventsLoading, setEventsLoading] = useState(true)
 
     useEffect(() => {
+        // האירועים נטענים פעם אחת בכניסה למסך. active הוא cleanup guard:
+        // אם המשתמש עוזב לפני סיום הבקשה, תוצאתה לא תעדכן state של רכיב שהוסר.
         let active = true
         api.get("/event")
             .then((eventsResponse) => {

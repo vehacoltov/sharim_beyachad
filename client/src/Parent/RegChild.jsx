@@ -73,7 +73,14 @@ export const childFields = [
   },
 ]
 
-function RegChild({ setRegChild, onSuccess }) {
+function RegChild({
+  setRegChild,
+  onSuccess,
+  cancelPath,
+  successPath,
+  successState,
+  embedded = false,
+}) {
   const { user, role } = useAuth()
   const loggedInParentId = role === "parent" ? user?._id : undefined
   const visibleFields = childFields.filter((field) =>
@@ -89,6 +96,10 @@ function RegChild({ setRegChild, onSuccess }) {
       fields={visibleFields}
       hiddenValues={loggedInParentId ? { parent: loggedInParentId } : {}}
       onSuccess={onSuccess}
+      cancelPath={cancelPath}
+      successPath={successPath}
+      successState={successState}
+      embedded={embedded}
     />
   )
 }
