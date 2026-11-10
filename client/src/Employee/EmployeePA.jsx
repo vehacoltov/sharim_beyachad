@@ -1,5 +1,4 @@
-import { Outlet, useLocation, useMatch, useNavigate, NavLink } from "react-router-dom"
-import { useState } from "react"
+import { Outlet, useLocation, useNavigate, NavLink } from "react-router-dom"
 import { useAuth } from "../useAuth"
 import Can from "../Can"
 
@@ -16,8 +15,6 @@ const EmployeePA = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { permissions, logout } = useAuth()
-  const isAddEventRoute = Boolean(useMatch("/EmployeePA/AddEvent"))
-  const isAllEventsRoute = Boolean(useMatch("/EmployeePA/AllEvents"))
   const signOut = () => {
     logout()
     navigate("/", { replace: true })
@@ -30,7 +27,7 @@ const EmployeePA = () => {
   }
 
   return (
-    <main className="page-shell">
+    <main className="page-shell" >
       <section className="auth-card" dir="rtl">
         <button
           className="employee-home-button"
@@ -51,16 +48,35 @@ const EmployeePA = () => {
         )}
         <nav className="parent-nav" aria-label="ניווט באזור האישי לעובד">
           <NavLink
-            to="employee-details"
+            to="/personal/employee-details"
             className={({ isActive }) =>
               `parent-nav-link${isActive ? " active" : ""}`
             }
           >
             עדכון פרטים אישיים
           </NavLink>
-
+          <NavLink
+            to="/personal/all-events"
+            className={({ isActive }) =>
+              `parent-nav-link${isActive ? " active" : ""}`
+            }
+          >
+            כל האירועים
+          </NavLink>
+          <Can permission="events">
+            <NavLink
+              to="/personal/add-event"
+              className={({ isActive }) =>
+                `parent-nav-link${isActive ? " active" : ""}`
+              }
+            >
+              הוסף אירוע
+            </NavLink>
+          </Can>
+          <button className="parent-nav-link" type="button" onClick={signOut}>
+            יציאה
+          </button>
         </nav>
-        <Outlet />
         <Can permission="permissions">
           <p>חשבון זה כולל הרשאות ניהול.</p>
         </Can>
@@ -76,33 +92,11 @@ const EmployeePA = () => {
         ) : (
           <p>לא הוגדרו פעולות מורשות לחשבון.</p>
         )}
-        <Can permission="events">
-          {!isAddEventRoute && (
-            // החלפת נתיב במקום היסטוריה חדשה משמרת את אופיים של כפתורי ה־State הקודמים.
-            <button
-              className="primary-button"
-              type="button"
-              onClick={() => navigate("/EmployeePA/AddEvent", { replace: true })}
-            >
-              הוסף אירוע
-            </button>
-          )}
-          {/* הכפתור עדיין משמש כמתג: לחיצה במסך האירועים מחזירה למסך העובד. */}
-          <button
-            className="primary-button"
-            type="button"
-            onClick={() => navigate(
-              isAllEventsRoute ? "/EmployeePA" : "/EmployeePA/AllEvents",
-              { replace: true },
-            )}
-          >
-            כל האירועים
-          </button>
-        </Can>
-        <button className="primary-button" type="button" onClick={signOut}>יציאה</button>
-      </section>
-    </main>
-  );
-}
 
+        <Outlet />
+      </section>
+    </main >
+  )
+
+}
 export default EmployeePA

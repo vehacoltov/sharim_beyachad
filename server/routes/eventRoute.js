@@ -6,7 +6,7 @@ const { requireRoleOrAction } = require("../middleware/requireUserAccess")
 const router = express.Router()
 
 router.route('/')
-    .get(requireRoleOrAction(["Parent", "Volunteer"], "events"), eventController.getAllEvents)
+    .get(requireRoleOrAction(["Parent", "Volunteer", "Employee"], "events"), eventController.getAllEvents)
     .post(requireAction("events"), eventController.createEvent)
     .put(requireAction("events"), eventController.update)
     .delete(requireAction("events"), eventController.deleteEvent)

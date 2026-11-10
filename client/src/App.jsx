@@ -110,6 +110,14 @@ function App() {
             {/* נתיב הפרופיל מקונן ב-/personal ונגיש רק לעובד/ת המאומת/ת. */}
             <Route element={<ProtectedRoute role="employee" />}>
               <Route path="employee-details" element={<UpdateEmployee />} />
+              <Route path="all-events" element={<AllEvents />} />
+              <Route element={<ProtectedRoute permission="events" />}>
+                <Route
+                  path="add-event"
+                  element={<EmployeeAddEventRoute returnPath="/personal" />}
+                />
+                <Route path="event/:eventId" element={<ManageEvent />} />
+              </Route>
             </Route>
 
           </Route>
@@ -117,10 +125,10 @@ function App() {
         {/* EmployeePA משמשת מעטפת משותפת: הנתיבים מציגים את תוכן המסך ב־Outlet. */}
         <Route element={<ProtectedRoute role="employee" />}>
           <Route path="/EmployeePA" element={<EmployeePA />}>
-            {/* המסכים הוטמעו בעבר רק תחת Can(permission="events"); הנתיבים שומרים אותה הגבלה. */}
+            <Route path="all-events" element={<AllEvents />} />
+            {/* יצירה ועדכון אירועים מחייבים הרשאת events. */}
             <Route element={<ProtectedRoute permission="events" />}>
-              <Route path="AllEvents" element={<AllEvents />} />
-              <Route path="AddEvent" element={<EmployeeAddEventRoute />} />
+              <Route path="add-event" element={<EmployeeAddEventRoute />} />
               <Route path="UpdateEvent/:eventId" element={<ManageEvent />} />
             </Route>
             {/* שליפות האירוע, הרשומות והמתנדבות דורשות events, matching ו-employees בהתאמה. */}

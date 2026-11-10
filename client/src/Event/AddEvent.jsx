@@ -18,7 +18,6 @@ const AddEvent = ({ onClose }) => {
     price: "יש להזין מחיר שאינו שלילי.",
     sumOfChilds: "מספר הילדים חייב להיות מספר שלם וחיובי.",
     SavedPlaces: "מספר המקומות השמורים חייב להיות מספר שלם ולא שלילי, וקטן ממספר הילדים.",
-    isActive: "יש לבחור אם האירוע פעיל או לא פעיל.",
     detailingForParent: "יש להזין פרטים להורים.",
     detailingForVolun: "יש להזין פרטים למתנדבות.",
   }
@@ -32,7 +31,6 @@ const AddEvent = ({ onClose }) => {
     price: "יש להזין מחיר לאירוע.",
     sumOfChilds: "יש להזין את מספר הילדים.",
     SavedPlaces: "יש להזין את מספר המקומות השמורים.",
-    isActive: "יש לבחור סטטוס לאירוע.",
     detailingForParent: "יש להזין פרטים להורים.",
     detailingForVolun: "יש להזין פרטים למתנדבות.",
   }
@@ -145,7 +143,7 @@ const AddEvent = ({ onClose }) => {
       price: Number(formData.get("price")),
       sumOfChilds,
       SavedPlaces: savedPlaces,
-      isActive: formData.get("isActive") === "true",
+      isActive: formData.has("isActive"),
       detailingForParent: formData.get("detailingForParent").trim(),
       detailingForVolun: formData.get("detailingForVolun").trim(),
     }
@@ -262,14 +260,17 @@ const AddEvent = ({ onClose }) => {
         {fieldError("SavedPlaces")}
       </div>
 
-      <div className="form-field checkbox-field">
-        <label htmlFor="event-active">אירוע פעיל</label>
-        <select id="event-active" name="isActive" defaultValue="" required {...fieldProps("isActive")}>
-          <option value="" disabled>בחרו סטטוס</option>
-          <option value="true">פעיל</option>
-          <option value="false">לא פעיל</option>
-        </select>
-        {fieldError("isActive")}
+      <div className="event-status-fields">
+        <label className="event-status-field" htmlFor="event-active">
+          <span>האם האירוע פעיל</span>
+          <input
+            id="event-active"
+            name="isActive"
+            type="checkbox"
+            role="switch"
+            defaultChecked={false}
+          />
+        </label>
       </div>
 
       <div className="form-field">

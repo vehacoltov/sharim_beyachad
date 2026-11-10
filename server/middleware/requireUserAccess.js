@@ -56,13 +56,21 @@ const requireOwnerOrAction = (accountRole, employeeAction, options = {}) =>
 
 /**
  * בונה Middleware לקריאה המותרת לסוגי חשבון נתונים, או לעובד בעל פעולה מוגדרת.
- * תפקיד העובד מגיע מ-JWT חתום; ההרשאה עצמה נבדקת מחדש מול Permission במסד.
+ * Employee יכול להיכלל במפורש ברשימת accountRoles עבור קריאות קריאה כלליות;
+ * אחרת תפקיד העובד מגיע מ-JWT חתום והפעולה נבדקת מחדש מול Permission במסד.
  */
 const requireRoleOrAction = (accountRoles, employeeAction) =>
     (req, res, next) => verifyToken(req, res, () => {
         // מאמת שהחשבון עדיין קיים לפני מסירת מידע לתפקיד שאינו עובד.
         const authorize = async () => {
             if (req.user.role === "Employee") {
+                if (accountRoles.includes("Employee")) {
+                    const employee = await Employee.findById(req.user.id).select("_id").lean()
+                    if (!employee) {
+                        return res.status(401).json({ message: "החשבון אינו קיים או שאינו פעיל" })
+                    }
+                    return next()
+                }
                 return requireAction(employeeAction)(req, res, next)
             }
 

@@ -161,6 +161,114 @@
   color: #17324d;
 }
 
+.manage-event-form {
+  display: grid;
+  gap: 16px;
+  width: min(100%, 720px);
+}
+
+.manage-event-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #bac9d6;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  resize: vertical;
+}
+
+.manage-event-form input:focus,
+.manage-event-form textarea:focus {
+  border-color: #16847a;
+  outline: 3px solid #16847a22;
+}
+
+.manage-event-registration-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
+}
+
+.manage-event-registration-counts div {
+  min-width: 180px;
+  padding: 12px 16px;
+  border: 1px solid #d9e3ed;
+  border-radius: 10px;
+  background: #f8fbfd;
+}
+
+.manage-event-registration-counts dt {
+  color: #597082;
+  font-weight: 700;
+}
+
+.manage-event-registration-counts dd {
+  margin: 4px 0 0;
+  color: #17324d;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.event-status-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.event-status-field {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.event-status-field input[type="checkbox"] {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin: 0;
+  appearance: none;
+  border: 1px solid #8293a3;
+  border-radius: 999px;
+  background: #aab6c1;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.event-status-field input[type="checkbox"]::before {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  content: "";
+  transition: transform 140ms ease;
+}
+
+.event-status-field input[type="checkbox"]:checked {
+  border-color: #176fdb;
+  background: #176fdb;
+}
+
+.event-status-field input[type="checkbox"]:checked::before {
+  transform: translateX(14px);
+}
+
+.event-status-field input[type="checkbox"]:focus-visible {
+  outline: 3px solid #16847a66;
+  outline-offset: 2px;
+}
+
+.event-status-field input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
 .matching-event-name {
   margin: 0;
   color: #597082;

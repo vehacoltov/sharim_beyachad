@@ -15,7 +15,7 @@ const AllEvents = ({
     onRegistrationSuccess,
 }) => {
     const navigate = useNavigate()
-    const { role } = useAuth()
+    const { role, hasPermission } = useAuth()
     const [events, setEvents] = useState([])
     const [eventsError, setEventsError] = useState("")
     const [eventsLoading, setEventsLoading] = useState(true)
@@ -56,14 +56,20 @@ const AllEvents = ({
             )}
             {role === "employee"
                 ? events.map((event) => (
-                    <button
-                        key={event._id}
-                        className="secondary-button"
-                        type="button"
-                        onClick={() => navigate(`/EmployeePA/UpdateEvent/${event._id}`)}
-                    >
-                        {event.name}
-                    </button>
+                    <article key={event._id} className="parent-event-card">
+                        <h3>{event.name}</h3>
+                        <p><strong>תאריך:</strong> {new Date(event.date).toLocaleDateString("he-IL")}</p>
+                        <p><strong>שעה:</strong> {event.hour}</p>
+                        {hasPermission("events") && (
+                            <button
+                                className="secondary-button"
+                                type="button"
+                                onClick={() => navigate(`/personal/event/${event._id}`)}
+                            >
+                                עריכת האירוע
+                            </button>
+                        )}
+                    </article>
                 ))
                 : events.map((event) => (
                     <EventDetails
