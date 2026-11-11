@@ -4,6 +4,7 @@ const Permission = require("../models/Permission")
 const { findEmployeePermission } = require("../utils/employeePermission")
 const { getLoginLock, recordLoginFailure, clearLoginFailures } = require("../utils/loginRateLimiter")
 const { isValidPassword } = require("../utils/password")
+const mongoose = require("mongoose")
 
 // הבדיקות בצד השרת נדרשות גם כשהטופס בדק את הערכים: בקשת HTTP יכולה לעקוף את ממשק המשתמש.
 // בדיקת הטיפוס מונעת מקריסת הביטויים הרגולריים על ערכים שאינם מחרוזות.
@@ -110,6 +111,73 @@ const employeeController = createModelController({
         return { fields: employeeFields }
     }
 })
+
+employeeController.getAccessPermission = async (req, res) => {
+    const { id } = req.params
+
+    if (!mongoose.isValidObjectId(id)) {
+        return res.status(400).json({ message: "נדרש מזהה עובד תקין" })
+    }
+
+    try {
+        const employee = await Employee.findById(id).select("permission").lean()
+
+        if (!employee) {
+            return res.status(404).json({ message: "העובד/ת לא נמצא/ה" })
+        }
+
+        const permission = await Permission.findById(employee.permission)
+            .select("validActions")
+            .lean()
+
+        if (!permission) {
+            return res.status(404).json({ message: "הרשאת העובד/ת לא נמצאה" })
+        }
+
+        return res.json({
+            permissionId: String(permission._id),
+            validActions: permission.validActions,
+        })
+    } catch (error) {
+        console.error("Failed to get employee access permission:", error)
+        return res.status(500).json({ message: "טעינת הרשאת העובד/ת נכשלה" })
+    }
+}
+
+employeeController.updateAccessPermission = async (req, res) => {
+    const { id } = req.params
+    const permissionId = req.body?.permissionId
+
+    if (
+        !mongoose.isValidObjectId(id) ||
+        !mongoose.isValidObjectId(permissionId)
+    ) {
+        return res.status(400).json({ message: "נדרש מזהה עובד והרשאה תקינים" })
+    }
+
+    try {
+        const permissionExists = await Permission.exists({ _id: permissionId })
+
+        if (!permissionExists) {
+            return res.status(404).json({ message: "ההרשאה שנבחרה לא נמצאה" })
+        }
+
+        const employee = await Employee.findByIdAndUpdate(
+            id,
+            { $set: { permission: permissionId } },
+            { new: true, runValidators: true },
+        )
+
+        if (!employee) {
+            return res.status(404).json({ message: "העובד/ת לא נמצא/ה" })
+        }
+
+        return res.json({ message: "הרשאת העובד/ת עודכנה בהצלחה" })
+    } catch (error) {
+        console.error("Failed to update employee access permission:", error)
+        return res.status(500).json({ message: "עדכון הרשאת העובד/ת נכשל" })
+    }
+}
 
 // גם יצירה ישירה ב-POST /employee חייבת לעבור אימות סיסמת הרשאה,
 // כדי שלא יהיה אפשר לעקוף את בדיקת ההרשאה דרך נתיב ה-CRUD הכללי.
