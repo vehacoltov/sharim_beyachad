@@ -343,4 +343,178 @@ controller.assign = async (req, res) => {
     }
 }
 
+/**
+ * מבטל שיבוץ הדדי בין רשומת ילד לרשומת מתנדבת באותו אירוע.
+ *
+ * הבקשה מקבלת eventId, childEventId ו-volunteerEventId, באותה תבנית של
+ * פעולת assign. לפני שינוי נתונים נבדקים רישום שתי הרשומות באירוע והקשר
+ * ההדדי המדויק ביניהן. שני שדות הקשר נמחקים בטרנזקציה אחת; מכיוון שלא
+ * הוגדר להם default מפורש בסכמות, שדה חסר הוא ערך ברירת המחדל שלהם.
+ */
+controller.unassign = async (req, res) => {
+    // שולף את מזהה האירוע ואת מזהי שתי רשומות ההשתתפות מגוף הבקשה.
+    const { eventId, childEventId, volunteerEventId } = req.body ?? {}
+
+    // מוודא שכל שלושת המזהים הם ObjectId תקינים לפני גישה למסד הנתונים.
+    if (
+        !mongoose.isObjectIdOrHexString(eventId)
+        || !mongoose.isObjectIdOrHexString(childEventId)
+        || !mongoose.isObjectIdOrHexString(volunteerEventId)
+    ) {
+        // מחזיר שגיאת בקשה כאשר מזהה חסר או שאינו במבנה הנתמך.
+        return res.status(400).json({ message: "נדרשים מזהים תקינים של אירוע, ילד ומתנדבת" })
+    }
+
+    // מצמיד קוד HTTP לשגיאה עסקית, כדי להבדיל אותה משגיאת מסד נתונים.
+    const createUnassignmentError = (status, message) => Object.assign(new Error(message), { status })
+    // שומר את ה-session מחוץ ל-try כדי שניתן יהיה לסגור אותו גם לאחר כשל.
+    let session
+
+    try {
+        // פותח session חדש שבו יבוצעו כל בדיקות העקביות ועדכוני הביטול.
+        session = await mongoose.startSession()
+        // ישמור את שתי הרשומות לאחר ביטול, ורק אם הטרנזקציה תסתיים בהצלחה.
+        let cancelledAssignment
+
+        // מבטיח שכל העדכונים יישמרו יחד, או שכולם יחזרו לאחור במקרה של כשל.
+        await session.withTransaction(async () => {
+            // מאמת שהאירוע מכיל את שתי הרשומות, ובמקביל יוצר נקודת כתיבה
+            // משותפת לפעולת השיבוץ ולפעולת הביטול כדי לתאם פעולות מתחרות.
+            const event = await Event.findOneAndUpdate({
+                _id: eventId,
+                Children: childEventId,
+                Volunteers: volunteerEventId
+            }, {
+                // עדכון חותמת הזמן גורם לפעולות המתחרות באותו אירוע להתנגש בטרנזקציה.
+                $set: { updatedAt: new Date() }
+            }, {
+                // מחזיר את האירוע שנמצא ומצמיד את הפעולה לטרנזקציה הנוכחית.
+                new: true,
+                session,
+                // מונע ממנגנון timestamps להוסיף שינוי מעבר לחותמת הזמן המפורשת.
+                timestamps: false
+            }).select("_id Children Volunteers")
+
+            // אם אחת ההפניות חסרה, שתי הרשומות אינן רשומות יחד באירוע המבוקש.
+            if (!event) {
+                // מחזיר שגיאת אי-מציאה לפני שינוי של אחד ממסמכי המשתתפים.
+                throw createUnassignmentError(404, "הילד והמתנדבת אינם רשומים יחד לאירוע הזה")
+            }
+
+            // מאתר את רישום הילד ומוודא שגם שדה האירוע במסמך מצביע לאירוע המבוקש.
+            const childRegistration = await ChildEvent.findOne({
+                _id: childEventId,
+                event: eventId
+            }).session(session)
+
+            // מחזיר שגיאה אם רישום הילד חסר או שייך לאירוע אחר.
+            if (!childRegistration) {
+                throw createUnassignmentError(404, "רשומת הילד לא נמצאה באירוע הנוכחי")
+            }
+
+            // מאתר את רישום המתנדבת ומוודא ששדה event שלו תואם לאותו אירוע.
+            const volunteerRegistration = await VolunteerEvent.findOne({
+                _id: volunteerEventId,
+                event: eventId
+            }).session(session)
+
+            // מחזיר שגיאה אם רישום המתנדבת חסר או שייך לאירוע אחר.
+            if (!volunteerRegistration) {
+                throw createUnassignmentError(404, "רשומת המתנדבת לא נמצאה באירוע הנוכחי")
+            }
+
+            // ממיר את הקישור במסמך הילד למחרוזת לצורך השוואה בטוחה מול מזהה הרשומה.
+            const assignedVolunteerId = childRegistration.volunteer
+                ? String(childRegistration.volunteer)
+                : null
+            // ממיר גם את הקישור ההפוך במתנדבת, תוך הבחנה בין קישור חסר למזהה קיים.
+            const assignedChildId = volunteerRegistration.child
+                ? String(volunteerRegistration.child)
+                : null
+
+            // אם שני הקישורים חסרים, הביטול כבר בוצע או שהזוג כלל לא שובץ.
+            if (!assignedVolunteerId && !assignedChildId) {
+                // מחזיר conflict כדי שהלקוח יוכל להבחין בין פעולה חוזרת להצלחה חדשה.
+                throw createUnassignmentError(409, "השיבוץ כבר בוטל או שאינו קיים")
+            }
+
+            // דורש ששני המסמכים יצביעו זה על זה; קשר חד-צדדי או זוג שגוי אינו מבוטל.
+            if (
+                assignedVolunteerId !== String(volunteerEventId)
+                || assignedChildId !== String(childEventId)
+            ) {
+                // הטרנזקציה תבוטל ללא שינוי, כדי לא להסתיר חוסר עקביות או לבטל זוג אחר.
+                throw createUnassignmentError(409, "רשומות הילד והמתנדבת אינן משובצות זו לזו")
+            }
+
+            // מסיר רק את קישור המתנדבת מרשומת הילד, ורק אם הוא עדיין תואם לזוג שנבדק.
+            const updatedChildRegistration = await ChildEvent.findOneAndUpdate(
+                {
+                    _id: childEventId,
+                    event: eventId,
+                    volunteer: volunteerEventId
+                },
+                // $unset מחזיר את השדה למצב ברירת המחדל שלו בסכמה: לא מוגדר.
+                { $unset: { volunteer: 1 } },
+                // מבקש את המסמך המעודכן, ולידציה, והשתתפות באותה טרנזקציה.
+                { new: true, runValidators: true, session }
+            )
+
+            // אם הקישור השתנה במקביל, אין להמשיך לביטול חלקי.
+            if (!updatedChildRegistration) {
+                // זריקת השגיאה מבטלת את הטרנזקציה ואת כל השינויים שבוצעו בה.
+                throw createUnassignmentError(409, "השיבוץ השתנה במקביל. יש לרענן את הרשימה")
+            }
+
+            // מסיר את הקישור ההפוך רק כשהוא עדיין מצביע לרשומת הילד שאומתה.
+            const updatedVolunteerRegistration = await VolunteerEvent.findOneAndUpdate(
+                {
+                    _id: volunteerEventId,
+                    event: eventId,
+                    child: childEventId
+                },
+                // מוחק את שדה הילד כדי להשיב את רשומת המתנדבת למצב לא משובץ.
+                { $unset: { child: 1 } },
+                // מבקש את המסמך המעודכן ומשייך את העדכון לאותה טרנזקציה.
+                { new: true, runValidators: true, session }
+            )
+
+            // כשל בעדכון ההפוך מחזיר לאחור גם את הסרת הקישור מרשומת הילד.
+            if (!updatedVolunteerRegistration) {
+                // השגיאה נזרקת לפני commit ולכן לא נשאר שינוי חד-צדדי במסד הנתונים.
+                throw createUnassignmentError(409, "השיבוץ השתנה במקביל. יש לרענן את הרשימה")
+            }
+
+            // שומר את שתי התוצאות לתשובה שתישלח רק לאחר commit מוצלח.
+            cancelledAssignment = {
+                childRegistration: updatedChildRegistration,
+                volunteerRegistration: updatedVolunteerRegistration
+            }
+        })
+
+        // מחזיר אישור ואת שתי הרשומות רק לאחר השלמת הטרנזקציה בהצלחה.
+        return res.json(cancelledAssignment)
+    } catch (error) {
+        // מחזיר שגיאה עסקית עם הסטטוס שהוגדר במקום שבו התגלתה.
+        if (error.status) {
+            return res.status(error.status).json({ message: error.message })
+        }
+
+        // מתעד שגיאת מסד ומחזיר תשובה כללית, בלי לחשוף פרטים פנימיים ללקוח.
+        console.error("Failed to unassign child and volunteer:", error)
+        return res.status(503).json({
+            message: "ביטול השיבוץ האטומי נכשל. יש לוודא שמסד הנתונים תומך בטרנזקציות ולנסות שוב"
+        })
+    } finally {
+        // סוגר את ה-session גם לאחר הצלחה, שגיאה עסקית או כשל במסד הנתונים.
+        if (session) {
+            // כשל בסגירת session מתועד, אך אינו משנה את התשובה העסקית שכבר נקבעה.
+            await session.endSession().catch((error) => {
+                // רושם את שגיאת הסגירה לצורכי אבחון בלי לחשוף אותה למשתמש.
+                console.error("Failed to close unassignment session:", error)
+            })
+        }
+    }
+}
+
 module.exports = controller

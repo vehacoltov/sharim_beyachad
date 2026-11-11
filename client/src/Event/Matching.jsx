@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react"
 import { useParams } from "react-router-dom"
 import { api, getErrorMessage } from "../api"
+import { saveMatchingAssignment } from "./matchingService"
 import ChildEvent from "./ChildEvent"
 import ChildEventDet from "./ChildEventDet"
+import CancelAssignmentModal from "./CancelAssignmentModal"
+import { cancelMatchingAssignment } from "./matchingService"
 import VolunEvent from "./VolunEvent"
 import VolunEventDet from "./VolunEventDet"
 
@@ -47,7 +50,13 @@ const loadParticipants = async (
         }),
     ).then((participants) => {
         // מסירים הפניות חסרות, כך שרינדור הרשימות לא יקבל ערכי null.
-        return participants.filter(Boolean)
+        const validParticipants = participants.filter(Boolean)
+        // מפיקים מפה לפי מזהה רישום כדי שהפניה כפולה באירוע לא תציג משתתף פעמיים.
+        const uniqueParticipants = new Map(
+            validParticipants.map((participant) => [participant.registrationId, participant]),
+        )
+        // מחזירים את הרשומות הייחודיות בסדר שבו הופיעו לראשונה בנתוני האירוע.
+        return Array.from(uniqueParticipants.values())
     })
 }
 
@@ -64,11 +73,15 @@ function Matching() {
     const [selectedVolunteer, setSelectedVolunteer] = useState(null)
     // קובעת אם חלונית האישור פתוחה; הבחירות נשמרות גם כשהחלונית נסגרת בביטול.
     const [isConfirmOpen, setIsConfirmOpen] = useState(false)
-    // מסמנת שהשרת עדיין שומר את השיבוץ, כדי למנוע בקשות כפולות.
+    // שומרת את הלשונית הפעילה: רשימות פנויות או זוגות שכבר שובצו.
+    const [activeTab, setActiveTab] = useState("available")
+    // שומרת זוג שאושר לפתיחת חלונית ביטול, כולל האירוע שאליו הוא שייך.
+    const [pendingCancellation, setPendingCancellation] = useState(null)
+    // מסמנת שהשרת עדיין מבצע שיבוץ או ביטול, כדי למנוע בקשות כפולות.
     const [isSaving, setIsSaving] = useState(false)
-    // נועלת מיד את callback השמירה, גם לפני ש-React מציג מחדש כפתור disabled.
+    // נועלת מיד את פעולות השיבוץ והביטול, לפני ש-React מציג כפתורים מושבתים.
     const saveInProgress = useRef(false)
-    // שומרת הודעת כשל מהשרת; הודעה זו מוצגת בלי להציג הצלחה שטרם אושרה.
+    // שומרת הודעת כשל מהשרת להצגה בחלונית הפעולה המתאימה.
     const [saveError, setSaveError] = useState("")
     // שומרת את כרטיס הפרטים הפתוח ואת מיקומו בתוך חלון הדפדפן.
     const [openDetails, setOpenDetails] = useState(null)
@@ -158,6 +171,30 @@ function Matching() {
     const activeSelectedVolunteer = selectedVolunteer?.selectionEventId === eventId
         ? selectedVolunteer
         : null
+    // ביטול ממתין מוצג רק כל עוד הוא שייך לאירוע הנוכחי בנתיב.
+    const activePendingCancellation = pendingCancellation?.selectionEventId === eventId
+        ? pendingCancellation
+        : null
+    // מציגים ברשימה הראשונה רק ילדים שאין להם קישור שיבוץ שמור.
+    const availableChildren = children.filter((child) => !child.assignedRegistrationId)
+    // מציגים ברשימה הראשונה רק מתנדבות שאין להן קישור שיבוץ שמור.
+    const availableVolunteers = volunteers.filter((volunteer) => !volunteer.assignedRegistrationId)
+    // בונים זוגות רק כאשר הקישורים בשני מסמכי ההשתתפות תואמים זה לזה.
+    const assignedPairs = children.flatMap((child) => {
+        // ללא מזהה מתנדבת ברשומת הילד אין זוג שניתן להציג כרשומה תקינה.
+        if (!child.assignedRegistrationId) return []
+
+        // מאתר את רשומת המתנדבת שאליה הילד מפנה.
+        const volunteer = volunteers.find((participant) => (
+            participant.registrationId === child.assignedRegistrationId
+        ))
+
+        // מסתיר קשר לא הדדי כדי לא להציג זוג שונה מהנתונים שנשמרו במסד.
+        if (!volunteer || volunteer.assignedRegistrationId !== child.registrationId) return []
+
+        // מחזיר את זוג ההשתתפות לצורך הצגת שמותיו ופקדי הביטול שלו.
+        return [{ child, volunteer }]
+    })
 
     /**
      * מטפלת בבחירת ילד מתוך שורת ChildEvent.
@@ -234,6 +271,118 @@ function Matching() {
     }
 
     /**
+     * פותחת את חלונית הביטול עבור ילד או מתנדבת שנלחצו ברשימת הזוגות.
+     *
+     * @param {Object} participant - רשומת הילד או המתנדבת שעל הכפתור שלה נלחץ.
+     * @param {string} participantType - הצד שנלחץ: "child" או "volunteer".
+     * מזהה את הצד השני מתוך נתוני האירוע, מוודאת שהקישור הדדי, ואז שומרת
+     * את שני המשתתפים ואת מזהה האירוע כדי להציג שמות ולשלוח את המזהים לשרת.
+     */
+    const handleRequestCancelAssignment = (participant, participantType) => {
+        // אין לפתוח בקשת ביטול חדשה בזמן ששמירה או ביטול אחר כבר מתבצעים.
+        if (saveInProgress.current || isSaving) return
+
+        // מזהה את רשומת הילד לפי הצד שממנו המשתמש הפעיל את הביטול.
+        const child = participantType === "child"
+            ? participant
+            : children.find((item) => item.registrationId === participant.assignedRegistrationId)
+        // מזהה באותו אופן את רשומת המתנדבת המתאימה באירוע.
+        const volunteer = participantType === "volunteer"
+            ? participant
+            : volunteers.find((item) => item.registrationId === participant.assignedRegistrationId)
+
+        // דורש ששתי הרשומות קיימות ומצביעות זו לזו לפני פתיחת אישור הביטול.
+        if (
+            !child
+            || !volunteer
+            || child.assignedRegistrationId !== volunteer.registrationId
+            || volunteer.assignedRegistrationId !== child.registrationId
+        ) {
+            // מציג שגיאה במקום לשלוח בקשה שעלולה לבטל זוג אחר או קשר חלקי.
+            setSaveError("לא ניתן לזהות שיבוץ הדדי תקין. יש לרענן את רשימת האירוע.")
+            return
+        }
+
+        // שומר את הזוג והאירוע כדי שחלונית האישור לא תסתמך על שורה שכבר השתנתה.
+        setPendingCancellation({ child, volunteer, selectionEventId: eventId })
+        // מסיר הודעת כשל קודמת לפני הצגת האישור החדש.
+        setSaveError("")
+    }
+
+    /**
+     * סוגרת את חלונית הביטול בלי לשנות את רשימות המשתתפים.
+     * בזמן שליחת הבקשה החלונית נשארת פתוחה עד לקבלת תשובת השרת.
+     */
+    const handleCloseCancellation = () => {
+        // מתעלם מסגירה בזמן שליחה, כדי לא לבלבל בין בקשה פעילה לתוצאה סופית.
+        if (isSaving) return
+
+        // מסיר את הזוג הממתין וכך חלונית הביטול אינה מוצגת עוד.
+        setPendingCancellation(null)
+        // מנקה את הודעת הביטול לאחר שהמשתמש בחר לחזור לרשימות.
+        setSaveError("")
+    }
+
+    /**
+     * שולחת לשרת בקשה לביטול השיבוץ ההדדי של הזוג שאושר.
+     * הרשימות מתעדכנות רק לאחר הצלחת ה-API; בכשל הן נשארות ללא שינוי.
+     */
+    const handleConfirmCancellation = async () => {
+        // דורש זוג ששייך לאירוע הנוכחי ומונע שליחה כפולה לפני הבקשה.
+        if (!activePendingCancellation || saveInProgress.current) return
+
+        // נועל פעולות נוספות ומציג מצב טעינה בחלונית עד לסיום בקשת הרשת.
+        saveInProgress.current = true
+        setIsSaving(true)
+        // מנקה שגיאה קודמת כדי להציג רק את תוצאת ניסיון הביטול הנוכחי.
+        setSaveError("")
+
+        try {
+            // שולח את מזהה האירוע ואת מזהי שתי רשומות ההשתתפות לשירות הקיים.
+            await cancelMatchingAssignment(
+                eventId,
+                activePendingCancellation.child.registrationId,
+                activePendingCancellation.volunteer.registrationId,
+            )
+
+            // לאחר הצלחת השרת מסיר את קישור המתנדבת מרשומת הילד בזיכרון הממשק.
+            setResult((previousResult) => {
+                // לא מעדכן תוצאה של אירוע קודם אם המשתמש עבר לאירוע אחר בזמן הבקשה.
+                if (previousResult?.eventId !== eventId) return previousResult
+
+                // מחזיר תוצאה מעודכנת שבה שני הצדדים פנויים, בלי לטעון מחדש את הדף.
+                return {
+                    ...previousResult,
+                    // null מציין שאין שיבוץ, ולכן הילד יחזור לרשימת הילדים הפנויים.
+                    children: previousResult.children.map((child) => (
+                        child.registrationId === activePendingCancellation.child.registrationId
+                            ? { ...child, assignedRegistrationId: null }
+                            : child
+                    )),
+                    // מסיר גם את הקישור ההפוך, ולכן המתנדבת תחזור לרשימת הפנויות.
+                    volunteers: previousResult.volunteers.map((volunteer) => (
+                        volunteer.registrationId === activePendingCancellation.volunteer.registrationId
+                            ? { ...volunteer, assignedRegistrationId: null }
+                            : volunteer
+                    )),
+                }
+            })
+
+            // סגירת החלונית לאחר הצלחה תסיר את הזוג מרשימת המשובצים הנגזרת מהנתונים.
+            setPendingCancellation(null)
+            // מוודא שלא נשארת הודעת שגיאה אחרי ביטול שהסתיים בהצלחה.
+            setSaveError("")
+        } catch (requestError) {
+            // משאיר את הזוג והנתונים ללא שינוי, ומציג את הודעת השרת בתוך החלונית.
+            setSaveError(getErrorMessage(requestError))
+        } finally {
+            // משחרר את הנעילה ומחזיר את הכפתורים למצב פעיל גם לאחר שגיאה.
+            saveInProgress.current = false
+            setIsSaving(false)
+        }
+    }
+
+    /**
      * שולחת לשרת את שתי רשומות ההשתתפות לשיבוץ ושומרת את התוצאה רק לאחר אישורו.
      * אין שינוי מקומי לפני הצלחת ה-API; במקרה של כשל נשמרות הבחירות ונשארת חלונית האישור.
      */
@@ -248,12 +397,11 @@ function Matching() {
 
         try {
             // שולחים רק מזהי אירוע ורשומות השתתפות; השרת מאמת הרשאה ושייכות מחדש.
-            const response = await api.post("/child-event/assign", {
+            const { childRegistration, volunteerRegistration } = await saveMatchingAssignment(
                 eventId,
-                childEventId: activeSelectedChild.registrationId,
-                volunteerEventId: activeSelectedVolunteer.registrationId,
-            })
-            const { childRegistration, volunteerRegistration } = response.data
+                activeSelectedChild.registrationId,
+                activeSelectedVolunteer.registrationId,
+            )
             const savedVolunteerId = getReferenceId(childRegistration.volunteer)
             const savedChildId = getReferenceId(volunteerRegistration.child)
 
@@ -295,57 +443,165 @@ function Matching() {
 
     return (
         <section className="matching-page" dir="rtl" aria-labelledby="matching-heading">
-            <h2 id="matching-heading">ילדים ומתנדבות באירוע</h2>
+            <h2 id="matching-heading">ילדים ומתנדבות</h2>
             {event && <p className="matching-event-name">{event.name}</p>}
             {loading && <p role="status">טוען משתתפים...</p>}
             {error && <p className="form-message error-message" role="alert">{error}</p>}
+            {saveError && !isConfirmOpen && !activePendingCancellation && (
+                <p className="form-message error-message" role="alert">{saveError}</p>
+            )}
             {!loading && !error && (
-                <div className="matching-lists">
-                    <section className="matching-list" aria-labelledby="matching-children-heading">
-                        <h3 id="matching-children-heading">ילדים ({children.length})</h3>
-                        {children.length > 0 ? (
-                            <ul>
-                                {/* ממפים כל ילד לשורת תצוגה שמקבלת מצב בחירה ו-callback מההורה. */}
-                                {children.map((child) => (
-                                    // find מזהה את שם המתנדבת המקושרת לפי מזהה רשומת ההשתתפות שלה.
-                                    <ChildEvent
-                                        key={child._id}
-                                        child={child}
-                                        selected={activeSelectedChild?._id === child._id}
-                                        disabled={isSaving}
-                                        assignedTo={volunteers.find((volunteer) => (
-                                            volunteer.registrationId === child.assignedRegistrationId
-                                        ))?.fullName}
-                                        onSelect={handleChildSelect}
-                                        onOpenDetails={handleOpenChildDetails}
-                                    />
-                                ))}
-                            </ul>
-                        ) : <p>אין ילדים הרשומים לאירוע.</p>}
-                    </section>
-                    <section className="matching-list" aria-labelledby="matching-volunteers-heading">
-                        <h3 id="matching-volunteers-heading">מתנדבות ({volunteers.length})</h3>
-                        {volunteers.length > 0 ? (
-                            <ul>
-                                {/* כל שורה מקבלת את הבחירה המשותפת ואת callback לפתיחת הפרטים. */}
-                                {volunteers.map((volunteer) => (
-                                    // find מזהה את שם הילד המקושר לפי מזהה רשומת ההשתתפות שלו.
-                                    <VolunEvent
-                                        key={volunteer._id}
-                                        volunteer={volunteer}
-                                        selected={activeSelectedVolunteer?._id === volunteer._id}
-                                        disabled={isSaving}
-                                        assignedTo={children.find((child) => (
-                                            child.registrationId === volunteer.assignedRegistrationId
-                                        ))?.fullName}
-                                        onSelect={handleVolunteerSelect}
-                                        onOpenDetails={handleOpenVolunteerDetails}
-                                    />
-                                ))}
-                            </ul>
-                        ) : <p>אין מתנדבות הרשומות לאירוע.</p>}
-                    </section>
-                </div>
+                <>
+                    {/* מציג שתי לשוניות נגישות לבחירה בין משתתפים פנויים לזוגות משובצים. */}
+                    <div className="matching-tabs" role="tablist" aria-label="תצוגת שיבוצים">
+                        <button
+                            id="matching-available-tab"
+                            className={`matching-tab ${activeTab === "available" ? "is-active" : ""}`}
+                            type="button"
+                            role="tab"
+                            aria-selected={activeTab === "available"}
+                            aria-controls="matching-available-panel"
+                            onClick={() => {
+                                // סוגר פרטים שצפים מעל הלשונית לפני הצגת הרשימות הפנויות.
+                                setOpenDetails(null)
+                                // מעביר את התצוגה ללשונית הילדים והמתנדבות הפנויות.
+                                setActiveTab("available")
+                            }}
+                        >
+                            <span className="matching-tab-icon" aria-hidden="true">⇄</span>
+                            <span className="matching-tab-copy">
+                                <span>ילדים ומתנדבות</span>
+                                <small>שעדיין לא שובצו</small>
+                            </span>
+                        </button>
+                        <button
+                            id="matching-assigned-tab"
+                            className={`matching-tab ${activeTab === "assigned" ? "is-active" : ""}`}
+                            type="button"
+                            role="tab"
+                            aria-selected={activeTab === "assigned"}
+                            aria-controls="matching-assigned-panel"
+                            onClick={() => {
+                                // סוגר פרטים שצפים מעל הלשונית לפני הצגת הזוגות המשובצים.
+                                setOpenDetails(null)
+                                // מעביר את התצוגה ללשונית הזוגות הקיימים.
+                                setActiveTab("assigned")
+                            }}
+                        >
+                            <span className="matching-tab-icon" aria-hidden="true">✓</span>
+                            <span className="matching-tab-copy">
+                                <span>זוגות ששובצו</span>
+                                <small>{assignedPairs.length} זוגות</small>
+                            </span>
+                        </button>
+                    </div>
+
+                    {/* מציג את שתי רשימות המשתתפים הפנויים זו לצד זו ואת תהליך השיבוץ הקיים. */}
+                    {activeTab === "available" && (
+                        <div
+                            className="matching-tab-panel"
+                            id="matching-available-panel"
+                            role="tabpanel"
+                            aria-labelledby="matching-available-tab"
+                        >
+                            <div className="matching-lists">
+                                <section className="matching-list" aria-labelledby="matching-children-heading">
+                                    <h3 id="matching-children-heading">ילדים ({availableChildren.length})</h3>
+                                    {availableChildren.length > 0 ? (
+                                        <ul>
+                                            {/* כל ילד פנוי מקבל את בחירת השיבוץ ואת פתיחת הפרטים מ-Matching. */}
+                                            {availableChildren.map((child) => (
+                                                <ChildEvent
+                                                    key={child.registrationId}
+                                                    child={child}
+                                                    selected={activeSelectedChild?.registrationId === child.registrationId}
+                                                    disabled={isSaving}
+                                                    assignedTo=""
+                                                    onSelect={handleChildSelect}
+                                                    onCancelAssignment={(participant) => (
+                                                        handleRequestCancelAssignment(participant, "child")
+                                                    )}
+                                                    onOpenDetails={handleOpenChildDetails}
+                                                />
+                                            ))}
+                                        </ul>
+                                    ) : <p>אין ילדים פנויים לשיבוץ.</p>}
+                                </section>
+                                <section className="matching-list" aria-labelledby="matching-volunteers-heading">
+                                    <h3 id="matching-volunteers-heading">מתנדבות ({availableVolunteers.length})</h3>
+                                    {availableVolunteers.length > 0 ? (
+                                        <ul>
+                                            {/* כל מתנדבת פנויה מקבלת את הבחירה ואת פתיחת הפרטים מ-Matching. */}
+                                            {availableVolunteers.map((volunteer) => (
+                                                <VolunEvent
+                                                    key={volunteer.registrationId}
+                                                    volunteer={volunteer}
+                                                    selected={activeSelectedVolunteer?.registrationId === volunteer.registrationId}
+                                                    disabled={isSaving}
+                                                    assignedTo=""
+                                                    onSelect={handleVolunteerSelect}
+                                                    onCancelAssignment={(participant) => (
+                                                        handleRequestCancelAssignment(participant, "volunteer")
+                                                    )}
+                                                    onOpenDetails={handleOpenVolunteerDetails}
+                                                />
+                                            ))}
+                                        </ul>
+                                    ) : <p>אין מתנדבות פנויות לשיבוץ.</p>}
+                                </section>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* מציג זוגות הדדיים בלבד, כאשר כל צד שומר על כפתור הביטול והפרטים שלו. */}
+                    {activeTab === "assigned" && (
+                        <div
+                            className="matching-tab-panel"
+                            id="matching-assigned-panel"
+                            role="tabpanel"
+                            aria-labelledby="matching-assigned-tab"
+                        >
+                            {assignedPairs.length > 0 ? (
+                                <ul className="matching-pairs">
+                                    {assignedPairs.map(({ child, volunteer }) => (
+                                        // מזהי שתי רשומות ההשתתפות יוצרים מפתח ייחודי לזוג באירוע.
+                                        <li
+                                            className="matching-pair"
+                                            key={`${child.registrationId}-${volunteer.registrationId}`}
+                                        >
+                                            <ul className="matching-pair-participants">
+                                                {/* שורת הילד מציגה את המתנדבת ופותחת את הביטול מאותו callback משותף. */}
+                                                <ChildEvent
+                                                    child={child}
+                                                    selected={false}
+                                                    disabled={isSaving}
+                                                    assignedTo={volunteer.fullName || "המתנדבת"}
+                                                    onSelect={handleChildSelect}
+                                                    onCancelAssignment={(participant) => (
+                                                        handleRequestCancelAssignment(participant, "child")
+                                                    )}
+                                                    onOpenDetails={handleOpenChildDetails}
+                                                />
+                                                {/* שורת המתנדבת מציגה את הילד ומפעילה את אותו מנגנון ביטול. */}
+                                                <VolunEvent
+                                                    volunteer={volunteer}
+                                                    selected={false}
+                                                    disabled={isSaving}
+                                                    assignedTo={child.fullName || "הילד"}
+                                                    onSelect={handleVolunteerSelect}
+                                                    onCancelAssignment={(participant) => (
+                                                        handleRequestCancelAssignment(participant, "volunteer")
+                                                    )}
+                                                    onOpenDetails={handleOpenVolunteerDetails}
+                                                />
+                                            </ul>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : <p className="matching-empty-state">אין זוגות משובצים באירוע.</p>}
+                        </div>
+                    )}
+                </>
             )}
 
             {/* כרטיס פרטים הוא צאצא של Matching, ולכן בחירתו אינה מנהלת state עצמאי. */}
@@ -364,7 +620,7 @@ function Matching() {
                 />
             )}
 
-            {/* החלון מופיע רק כאשר שני הצדדים נבחרו והוא דורש אישור מפורש לשמירה. */}
+            {/* חלונית השיבוץ מופיעה רק לאחר בחירת ילד ומתנדבת ודורשת אישור מפורש. */}
             {isConfirmOpen && activeSelectedChild && activeSelectedVolunteer && (
                 <div className="dialog-backdrop" role="presentation">
                     <section
@@ -398,6 +654,18 @@ function Matching() {
                         </div>
                     </section>
                 </div>
+            )}
+
+            {/* חלונית הביטול מקבלת את שמות הזוג ואת פעולות האישור והחזרה מ-Matching. */}
+            {activePendingCancellation && (
+                <CancelAssignmentModal
+                    childName={activePendingCancellation.child.fullName || "שם הילד אינו זמין"}
+                    volunteerName={activePendingCancellation.volunteer.fullName || "שם המתנדבת אינו זמין"}
+                    isSaving={isSaving}
+                    error={saveError}
+                    onCancel={handleCloseCancellation}
+                    onConfirm={handleConfirmCancellation}
+                />
             )}
         </section>
     )

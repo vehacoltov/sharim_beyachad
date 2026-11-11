@@ -2,7 +2,15 @@
  * מציגה מתנדבת אחת ומעבירה בחירה ופתיחת פרטים אל Matching, שמחזיק את ה-state המשותף.
  * @param {Object} props - פרטי המתנדבת, מצב בחירתה וה-callbacks שמספק ההורה.
  */
-function VolunEvent({ volunteer, selected, assignedTo, disabled, onSelect, onOpenDetails }) {
+function VolunEvent({
+    volunteer,
+    selected,
+    assignedTo,
+    disabled,
+    onSelect,
+    onCancelAssignment,
+    onOpenDetails,
+}) {
     // מעביר ל-Matching גם את אלמנט הכפתור, כדי למקם את כרטיס הפרטים ליד השורה.
     const handleDetailsClick = (event) => {
         // השורה כולה משמשת עוגן למיקום כרטיס הפרטים ליד רשימת המתנדבות.
@@ -10,7 +18,7 @@ function VolunEvent({ volunteer, selected, assignedTo, disabled, onSelect, onOpe
         onOpenDetails(volunteer, row || event.currentTarget)
     }
 
-    // מתנדבת שכבר מקושרת לילד מוצגת כמשובצת ואינה זמינה לשיבוץ נוסף.
+    // שם הילד המשובץ מוצג לצד המתנדבת, וכפתור הפעולה מאפשר לבטל את הקישור.
     const assignmentLabel = assignedTo
         ? `משובצת עם ${assignedTo}`
         : volunteer.assignedRegistrationId
@@ -26,16 +34,29 @@ function VolunEvent({ volunteer, selected, assignedTo, disabled, onSelect, onOpe
                 {assignmentLabel && <small className="matching-assignment-label">{assignmentLabel}</small>}
             </div>
             <div className="matching-participant-actions">
-                <button
-                    className="matching-icon-button matching-assign-button"
-                    type="button"
-                    aria-label={`בחירת ${volunteer.fullName || "המתנדבת"} לשיבוץ`}
-                    title={assignmentLabel || "בחירת המתנדבת לשיבוץ"}
-                    disabled={disabled || Boolean(volunteer.assignedRegistrationId)}
-                    onClick={() => onSelect(volunteer)}
-                >
-                    <span aria-hidden="true">⇄</span>
-                </button>
+                {assignedTo ? (
+                    <button
+                        className="matching-icon-button matching-cancel-button"
+                        type="button"
+                        aria-label={`ביטול השיבוץ של ${volunteer.fullName || "המתנדבת"}`}
+                        title="ביטול שיבוץ"
+                        disabled={disabled}
+                        onClick={() => onCancelAssignment(volunteer)}
+                    >
+                        <span aria-hidden="true">×</span>
+                    </button>
+                ) : (
+                    <button
+                        className="matching-icon-button matching-assign-button"
+                        type="button"
+                        aria-label={`בחירת ${volunteer.fullName || "המתנדבת"} לשיבוץ`}
+                        title={assignmentLabel || "בחירת המתנדבת לשיבוץ"}
+                        disabled={disabled || Boolean(volunteer.assignedRegistrationId)}
+                        onClick={() => onSelect(volunteer)}
+                    >
+                        <span aria-hidden="true">⇄</span>
+                    </button>
+                )}
                 <button
                     className="matching-icon-button matching-details-button"
                     type="button"

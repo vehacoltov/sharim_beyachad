@@ -274,6 +274,94 @@
   color: #597082;
 }
 
+/* מעצב פס לשוניות אופקי עם גלילה כאשר רוחב המסך אינו מספיק לכל האפשרויות. */
+.matching-tabs {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  border-bottom: 1px solid #d9e3ed;
+  background: #fff;
+}
+
+/* מגדיר לשונית בגובה קבוע וביישור אופקי שמתאים לכותרת ולאייקון. */
+.matching-tab {
+  display: inline-flex;
+  min-width: max-content;
+  min-height: 60px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 10px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+  color: #597082;
+  cursor: pointer;
+  font: inherit;
+  text-align: start;
+}
+
+/* מדגיש לשונית בריחוף באמצעות הצבע הפעיל של הממשק. */
+.matching-tab:hover {
+  color: #176fdb;
+}
+
+/* מסמן את הלשונית הפעילה בצבע טקסט ובקו תחתון כחול. */
+.matching-tab.is-active {
+  border-bottom-color: #176fdb;
+  color: #176fdb;
+}
+
+/* מציג מסגרת נראית בעת ניווט מקלדת לצורך נגישות. */
+.matching-tab:focus-visible {
+  outline: 3px solid #176fdb55;
+  outline-offset: -3px;
+}
+
+/* מקבע את גודל אזור האייקון כדי שכותרת הלשונית לא תזוז. */
+.matching-tab-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 6px;
+  background: #edf5f4;
+  color: #145b55;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+/* מתאים את רקע האייקון לצבע הכחול כאשר הלשונית פעילה. */
+.matching-tab.is-active .matching-tab-icon {
+  background: #eaf2ff;
+  color: #176fdb;
+}
+
+/* מציג את כותרת הלשונית ואת כותרת המשנה בשתי שורות צפופות. */
+.matching-tab-copy {
+  display: grid;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+/* מצמצם את גודל כותרת המשנה ומציג אותה בגוון ניטרלי. */
+.matching-tab-copy small {
+  color: #718394;
+  font-size: 12px;
+}
+
+/* משתמש בצבע הפעיל גם בכותרת המשנה כדי לשמור על היררכיה ברורה. */
+.matching-tab.is-active .matching-tab-copy small {
+  color: #176fdb;
+}
+
+/* שומר על רוחב תקין של תוכן הלשונית ומפריד אותו מפס הניווט. */
+.matching-tab-panel {
+  min-width: 0;
+  padding-top: 4px;
+}
+
 .matching-lists {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -459,6 +547,43 @@
 
 .matching-list p {
   margin: 12px 0 0;
+}
+
+/* מארגן כל זוג במסגרת עדינה ומפריד בין שורת הילד לשורת המתנדבת. */
+.matching-pairs {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* מציג כל זוג במסגרת נפרדת שאינה מתרחבת מעבר לרוחב הזמין. */
+.matching-pair {
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid #d9e3ed;
+  border-radius: 6px;
+  background: #fff;
+}
+
+/* מסדר את שתי שורות המשתתפים בתוך הזוג ללא הזחות ברירת מחדל של רשימה. */
+.matching-pair-participants {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* מפריד בין הילד למתנדבת בקו עדין, בלי לפצל את מסגרת הזוג. */
+.matching-pair-participants > li + li {
+  border-top: 1px solid #edf1f5;
+}
+
+/* מעצב הודעת מצב ריקה כאשר עדיין לא קיימים זוגות משובצים. */
+.matching-empty-state {
+  margin: 12px 0 0;
+  color: #597082;
 }
 
 .parent-event-card {
