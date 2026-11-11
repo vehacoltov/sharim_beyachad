@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { api, getErrorMessage } from "../api"
 import { useAuth } from "../useAuth"
 import EventDetails from "./EventDetails"
+import Can from "../Can"
 
 const AllEvents = ({
     selectedEventId,
@@ -64,11 +65,22 @@ const AllEvents = ({
                             <button
                                 className="secondary-button"
                                 type="button"
-                                onClick={() => navigate(`/personal/event/${event._id}`)}
+                                onClick={() => navigate(`/personal/event/${event._id}/edit`)}
                             >
                                 עריכת האירוע
                             </button>
                         )}
+
+                        <Can permissions={["events", "matching", "employees"]}>
+                            <button
+                                className="secondary-button"
+                                type="button"
+                                onClick={() => navigate(`/EmployeePA/Matching/${event._id}`)}
+                            >
+                                צפייה בילדים ובמתנדבות לאירוע
+                            </button>
+                        </Can>
+
                     </article>
                 ))
                 : events.map((event) => (

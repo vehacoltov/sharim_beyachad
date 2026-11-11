@@ -22,7 +22,7 @@ import Matching from "./Event/Matching"
 import ProtectedRoute from "./ProtectedRoute"
 import "./App.css"
 import UpdateEmployee from "./Employee/UpdateEmployee"
-
+import ManageEmployies from "./Event/ManageEmployies"
 // ביטול או שמירה מוצלחת מפעילים onClose ומחזירים למסך העובד; בשגיאה הטופס נשאר פתוח,
 // כי AddEvent אינו מפעיל את ה־callback בכשל. replace מונע הוספת שלב להיסטוריה הישנה.
 function EmployeeAddEventRoute() {
@@ -111,12 +111,15 @@ function App() {
             <Route element={<ProtectedRoute role="employee" />}>
               <Route path="employee-details" element={<UpdateEmployee />} />
               <Route path="all-events" element={<AllEvents />} />
+              <Route element={<ProtectedRoute permission="employees" />}>
+                <Route path="employees-manage" element={<ManageEmployies />} />
+              </Route>
               <Route element={<ProtectedRoute permission="events" />}>
                 <Route
                   path="add-event"
                   element={<EmployeeAddEventRoute returnPath="/personal" />}
                 />
-                <Route path="event/:eventId" element={<ManageEvent />} />
+                <Route path="event/:eventId/edit" element={<ManageEvent />} />
               </Route>
             </Route>
 
@@ -126,10 +129,11 @@ function App() {
         <Route element={<ProtectedRoute role="employee" />}>
           <Route path="/EmployeePA" element={<EmployeePA />}>
             <Route path="all-events" element={<AllEvents />} />
+
             {/* יצירה ועדכון אירועים מחייבים הרשאת events. */}
             <Route element={<ProtectedRoute permission="events" />}>
               <Route path="add-event" element={<EmployeeAddEventRoute />} />
-              <Route path="UpdateEvent/:eventId" element={<ManageEvent />} />
+              <Route path="UpdateEvent/:eventId/edit" element={<ManageEvent />} />
             </Route>
             {/* שליפות האירוע, הרשומות והמתנדבות דורשות events, matching ו-employees בהתאמה. */}
             <Route element={<ProtectedRoute permissions={["events", "matching", "employees"]} />}>

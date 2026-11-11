@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react"
 import { useLocation, useNavigate, useParams } from "react-router-dom"
 import { api, getErrorMessage } from "../api"
-import Can from "../Can"
 
 const dateInputValue = (value) => {
     if (!value) return ""
@@ -200,17 +199,7 @@ function ManageEvent() {
                 </form>
                 </>
             )}
-            {isCurrentEventLoaded && event && (
-                <Can permissions={["events", "matching", "employees"]}>
-                    <button
-                        className="secondary-button"
-                        type="button"
-                        onClick={() => navigate(`/EmployeePA/Matching/${eventId}`)}
-                    >
-                        צפייה בילדים ובמתנדבות לאירוע
-                    </button>
-                </Can>
-            )}
+            
         </section>
     )
 }

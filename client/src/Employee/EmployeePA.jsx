@@ -73,6 +73,18 @@ const EmployeePA = () => {
               הוסף אירוע
             </NavLink>
           </Can>
+
+          <Can permission="employees">
+            <NavLink
+              to="/personal/employees-manage"
+              className={({ isActive }) =>
+                `parent-nav-link${isActive ? " active" : ""}`
+              }
+            >
+              ניהול עובדים
+            </NavLink>
+          </Can>
+
           <button className="parent-nav-link" type="button" onClick={signOut}>
             יציאה
           </button>
