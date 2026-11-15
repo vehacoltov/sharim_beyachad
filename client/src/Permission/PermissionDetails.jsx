@@ -110,7 +110,7 @@ const PermissionDetails = () => {
               aria-describedby="permission-access-code-hint"
             />
             <small id="permission-access-code-hint">
-              השאירי ריק כדי לא לשנות את הקוד. במסד יישמר hash ולא הקוד עצמו.
+              השאירי ריק אם אינך רוצה לשנות את הקוד.
             </small>
           </div>
 

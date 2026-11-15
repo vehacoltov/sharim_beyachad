@@ -474,6 +474,9 @@
   position: fixed;
   z-index: 4;
   width: min(320px, calc(100vw - 24px));
+  max-height: min(360px, calc(100vh - 24px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 14px;
   border: 1px solid var(--color-sea-300);
   border-radius: 8px;
@@ -645,6 +648,56 @@
 .form-field {
   display: grid;
   gap: 7px;
+}
+
+.login-account-field {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  justify-self: stretch;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.login-account-field legend {
+  padding: 0;
+  color: var(--color-sea-800);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.login-account-type-buttons {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  justify-self: start;
+  justify-content: flex-start;
+  direction: rtl;
+  gap: 4px;
+}
+
+.login-account-type-button {
+  flex: 0 0 auto;
+  min-width: 0;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.login-account-type-button[aria-pressed="true"] {
+  border-color: var(--color-sea-300);
+  background: var(--color-sea-100);
+  color: var(--color-sea-800);
+  box-shadow: 0 2px 6px rgb(22 88 120 / 0.12);
+}
+
+.login-account-type-button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-sea-500) 40%, transparent);
+  outline-offset: 2px;
 }
 
 .form-field label {

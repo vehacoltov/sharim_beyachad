@@ -87,6 +87,8 @@ function Matching() {
     const [saveError, setSaveError] = useState("")
     // שומרת את כרטיס הפרטים הפתוח ואת מיקומו בתוך חלון הדפדפן.
     const [openDetails, setOpenDetails] = useState(null)
+    // מאפשר למאזיני המסמך לזהות גלילה או לחיצה בתוך כרטיס הפרטים.
+    const detailsPopupRef = useRef(null)
 
     // טוען מחדש אירוע ורשימות כאשר מזהה האירוע בנתיב משתנה.
     useEffect(() => {
@@ -141,20 +143,29 @@ function Matching() {
         }
     }, [eventId])
 
-    // מאזין לגלילת כל חלון או אזור גלילה, כדי לסגור פרטים שאינם מיושרים יותר לשורה.
+    // מאזין לגלילה וללחיצה מחוץ לכרטיס, אך משאיר אותו פתוח בזמן גלילה בתוכו.
     useEffect(() => {
         // בלי כרטיס פרטים פתוח אין צורך להשאיר מאזיני גלילה או שינוי גודל.
         if (!openDetails) return undefined
 
-        // סוגר את הכרטיס בכל גלילה, לרבות גלילה בתוך אלמנט פנימי בדף.
+        const handleScroll = (event) => {
+            if (detailsPopupRef.current?.contains(event.target)) return
+            setOpenDetails(null)
+        }
+        const handleOutsidePointerDown = (event) => {
+            if (!detailsPopupRef.current?.contains(event.target)) setOpenDetails(null)
+        }
         const closeDetails = () => setOpenDetails(null)
-        window.addEventListener("scroll", closeDetails, true)
+
+        window.addEventListener("scroll", handleScroll, true)
         window.addEventListener("resize", closeDetails)
+        document.addEventListener("pointerdown", handleOutsidePointerDown)
 
         // מסיר מאזינים כאשר הכרטיס נסגר או מוחלף, כדי למנוע מאזינים כפולים.
         return () => {
-            window.removeEventListener("scroll", closeDetails, true)
+            window.removeEventListener("scroll", handleScroll, true)
             window.removeEventListener("resize", closeDetails)
+            document.removeEventListener("pointerdown", handleOutsidePointerDown)
         }
     }, [openDetails])
 
@@ -243,10 +254,12 @@ function Matching() {
         const popupWidth = Math.min(320, window.innerWidth - 24)
         const popupHeight = Math.min(360, window.innerHeight - 24)
         const spaceOnRight = window.innerWidth - rectangle.right
-        // מעדיפים להציב מימין לשורה; כשאין מספיק מקום, מציבים משמאלה כדי למנוע חיתוך.
-        const left = spaceOnRight >= popupWidth + 12
-            ? rectangle.right + 8
-            : Math.max(12, rectangle.left - popupWidth - 8)
+        // פרטי המתנדבת מוצגים משמאל לשורה; פרטי הילד מוצגים מימין כשיש מקום.
+        const left = type === "volunteer"
+            ? Math.max(12, rectangle.left - popupWidth - 8)
+            : spaceOnRight >= popupWidth + 12
+                ? rectangle.right + 8
+                : Math.max(12, rectangle.left - popupWidth - 8)
         // מגבילים את הגובה העליון כך שכרטיס הפרטים יישאר בתוך חלון הדפדפן.
         const top = Math.max(12, Math.min(rectangle.top, window.innerHeight - popupHeight - 12))
 
@@ -611,6 +624,7 @@ function Matching() {
                 <ChildEventDet
                     child={openDetails.participant}
                     position={openDetails.position}
+                    popupRef={detailsPopupRef}
                     onClose={() => setOpenDetails(null)}
                 />
             )}
@@ -618,6 +632,7 @@ function Matching() {
                 <VolunEventDet
                     volunteer={openDetails.participant}
                     position={openDetails.position}
+                    popupRef={detailsPopupRef}
                     onClose={() => setOpenDetails(null)}
                 />
             )}

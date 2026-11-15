@@ -4,7 +4,7 @@
  * @param {Object} props - הילד, מיקום הכרטיס ו-callback לסגירתו.
  * מוצגים רק פרטים שהשרת כבר התיר לעובד בעל הרשאת matching לקרוא.
  */
-function ChildEventDet({ child, position, onClose }) {
+function ChildEventDet({ child, position, popupRef, onClose }) {
     // מרכזים את השדות הרלוונטיים לפרטי התאמה; לא מציגים מזהה או פרטי קשר של המשפחה.
     const details = [
         ["גיל", child.age],
@@ -24,6 +24,7 @@ function ChildEventDet({ child, position, onClose }) {
 
     return (
         <aside
+            ref={popupRef}
             className="matching-details-popup"
             style={{ left: position.left, top: position.top }}
             role="dialog"

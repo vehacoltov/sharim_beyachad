@@ -4,7 +4,7 @@
  * @param {Object} props - המתנדבת, מיקום הכרטיס ו-callback לסגירתו.
  * פרטי קשר, מזהה אישי וסיסמה אינם מוצגים; מידע זה אינו נחוץ לבחירת התאמה.
  */
-function VolunEventDet({ volunteer, position, onClose }) {
+function VolunEventDet({ volunteer, position, popupRef, onClose }) {
     // בוחרים מידע תפקידי שיכול לסייע בשיבוץ ולא מידע קשר אישי.
     const details = [
         ["גיל", volunteer.age],
@@ -19,6 +19,7 @@ function VolunEventDet({ volunteer, position, onClose }) {
 
     return (
         <aside
+            ref={popupRef}
             className="matching-details-popup"
             style={{ left: position.left, top: position.top }}
             role="dialog"

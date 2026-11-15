@@ -3,6 +3,6 @@ export const permissionActionLabels = {
   employees: "ניהול עובדים",
   events: "ניהול אירועים",
   matching: "שידוך ילדים ומתנדבים",
-  registation: "הרשמה",
+  registation: "הרשמת ילדים",
   payments: "ניהול תשלומים",
 }

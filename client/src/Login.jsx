@@ -106,18 +106,22 @@ function Login() {
         {location.state?.message && (
           <p className="form-message success-message" role="status">{location.state.message}</p>
         )}
-        <div className="form-field">
-          <label htmlFor="accountType">סוג חשבון</label>
-          <select
-            id="accountType"
-            value={accountType}
-            onChange={(event) => setAccountType(event.target.value)}
-          >
+        <fieldset className="login-account-field">
+          <legend>סוג חשבון</legend>
+          <div className="login-account-type-buttons" role="group" aria-label="בחירת סוג החשבון">
             {Object.entries(accountTypes).map(([value, option]) => (
-              <option value={value} key={value}>{option.label}</option>
+              <button
+                className="login-account-type-button rounded-xl px-1 py-2 text-sm font-bold text-sea-800 transition-colors hover:bg-sea-100 sm:px-2 sm:text-base"
+                type="button"
+                key={value}
+                aria-pressed={accountType === value}
+                onClick={() => setAccountType(value)}
+              >
+                {option.label}
+              </button>
             ))}
-          </select>
-        </div>
+          </div>
+        </fieldset>
         <div className="form-field">
           <label htmlFor="identifier">{account.prompt}</label>
           <input
